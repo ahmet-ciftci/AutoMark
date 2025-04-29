@@ -1,15 +1,14 @@
 const fs = require('fs');
 const path = require('path');
 const AdmZip = require('adm-zip');
+const { addSubmission } = require('./Database');
 
 
-function extractAndValidateZips(submissionsDir, outputDir) {
-    const results = [];
-  
-    //dosya var mı kontrol et
+
+function extractAndSaveSubmissions(submissionsDir, outputDir, projectId) {
     if (!fs.existsSync(submissionsDir)) {
       console.error('Submissions directory not found:', submissionsDir);
-      return results;
+      return;
     }
   
     const zipFiles = fs.readdirSync(submissionsDir).filter(file => file.endsWith('.zip'));
@@ -23,39 +22,53 @@ function extractAndValidateZips(submissionsDir, outputDir) {
         //zip extract etme
         const zip = new AdmZip(zipPath);
         zip.extractAllTo(extractPath, true);
-        console.log(`Extracted ${zipFile} → ${extractPath}`);
+        console.log(`Extracted ${zipFile} to ${extractPath}`);
   
-        // Çıkarılan klasör gerçekten oluştu mu?
+        // klasör var mı kontrol etme
         if (fs.existsSync(extractPath)) {
-          results.push({
-            studentId,
-            status: 'extracted',
-            message: 'Extracted successfully',
-            extractPath
-          });
+          addSubmission(projectId, studentId,'', extractPath, '', '', 
+            (err, id) => {
+              if (err) {
+                console.error(`Failed to insert successful submission for ${studentId}:`, err.message);
+              } else {
+                console.log(`Submission inserted for ${studentId}, id=${id}`);
+              }
+            }
+          );
         } else {
-          results.push({
+          addSubmission(
+            projectId,
             studentId,
-            status: 'extraction_failed',
-            message: 'Extracted folder not found',
-            extractPath: null
-          });
+            'extraction_failed',
+            '',
+            'Extraction directory missing',
+            '',
+            (err, id) => {
+              if (err) {
+                console.error(`Failed to insert extraction failure for ${studentId}:`, err.message);
+              } else {
+                console.log(`Extraction failed recorded for ${studentId}`);
+              }
+            }
+          );
         }
-        //validation 
+  
       } catch (err) {
-        console.error(`Failed to extract ${zipFile}: ${err.message}`);
-        results.push({
-          studentId,
-          status: 'zip_error',
-          message: err.message,
-          extractPath: null
-        });
+        console.error(`Failed to extract ${zipFile}:`, err.message);
+  
+        addSubmission(projectId, studentId, 'zip_error', '', err.message,'',
+          (err2, id) => {
+            if (err2) {
+              console.error(`Failed to insert zip error for ${studentId}:`, err2.message);
+            } else {
+              console.log(`Zip extraction error recorded for ${studentId}`);
+            }
+          }
+        );
       }
     });
-  
-    return results;
   }
   
   module.exports = {
-    extractAndValidateZips
+    extractAndSaveSubmissions
   };
