@@ -1,10 +1,15 @@
 const sqlite3 = require("sqlite3").verbose();
-import { join } from "path";
-import fs from "fs";
+const path = require("path");
+const fs = require("fs");
+const os = require("os");
+
+const documentsPath = path.join(os.homedir(), "Documents");
+const dbPath = path.join(documentsPath, "automark.db");
+const db = new sqlite3.Database(dbPath);
+
 
 function initializeDatabase() {
-  const documentsPath = join(require("os").homedir(), "Documents");
-  const dbPath = join(documentsPath, "automark.db");
+
 
   if (!fs.existsSync(documentsPath)) {
     fs.mkdirSync(documentsPath);
@@ -14,7 +19,7 @@ function initializeDatabase() {
     console.log("Database already exists at:", dbPath);
     return;
   }
-  const db = new sqlite3.Database(dbPath);
+
 
   db.serialize(() => {
     // Create Projects table
@@ -65,4 +70,180 @@ function initializeDatabase() {
   db.close();
 }
 
-module.exports = { initializeDatabase };
+// Projects Table Methods
+function addProject(name, configId, submissionsPath, callback) {
+  const query = `INSERT INTO Projects (name, config_id, submissions_path) VALUES (?, ?, ?)`;
+  db.run(query, [name, configId, submissionsPath], function (err) {
+    callback(err, this.lastID);
+  });
+}
+
+function getProjects(callback) {
+  const query = `SELECT * FROM Projects`;
+  db.all(query, [], (err, rows) => {
+    callback(err, rows);
+  });
+}
+
+function updateProject(id, name, configId, submissionsPath, callback) {
+  const query = `UPDATE Projects SET name = ?, config_id = ?, submissions_path = ? WHERE id = ?`;
+  db.run(query, [name, configId, submissionsPath, id], function (err) {
+    callback(err, this.changes);
+  });
+}
+
+function deleteProject(id, callback) {
+  const query = `DELETE FROM Projects WHERE id = ?`;
+  db.run(query, [id], function (err) {
+    callback(err, this.changes);
+  });
+}
+
+// Configurations Table Methods
+function addConfiguration(name, compileCommand, sourceCode, compileParameters, runCommand, callback) {
+  const query = `INSERT INTO Configurations (name, compile_command, source_code, compile_parameters, run_command) VALUES (?, ?, ?, ?, ?)`;
+  db.run(query, [name, compileCommand, sourceCode, compileParameters, runCommand], function (err) {
+    callback(err, this.lastID);
+  });
+}
+
+function getConfigurations(callback) {
+  const query = `SELECT * FROM Configurations`;
+  db.all(query, [], (err, rows) => {
+    callback(err, rows);
+  });
+}
+
+function updateConfiguration(id, name, compileCommand, sourceCode, compileParameters, runCommand, callback) {
+  const query = `UPDATE Configurations SET name = ?, compile_command = ?, source_code = ?, compile_parameters = ?, run_command = ? WHERE id = ?`;
+  db.run(query, [name, compileCommand, sourceCode, compileParameters, runCommand, id], function (err) {
+    callback(err, this.changes);
+  });
+}
+
+function deleteConfiguration(id, callback) {
+  const query = `DELETE FROM Configurations WHERE id = ?`;
+  db.run(query, [id], function (err) {
+    callback(err, this.changes);
+  });
+}
+
+// TestConfig Table Methods
+function addTestConfig(projectId, inputMethod, input, outputMethod, expectedOutput, callback) {
+  const query = `INSERT INTO TestConfig (project_id, input_method, input, output_method, expected_output) VALUES (?, ?, ?, ?, ?)`;
+  db.run(query, [projectId, inputMethod, input, outputMethod, expectedOutput], function (err) {
+    callback(err, this.lastID);
+  });
+}
+
+function getTestConfigs(callback) {
+  const query = `SELECT * FROM TestConfig`;
+  db.all(query, [], (err, rows) => {
+    callback(err, rows);
+  });
+}
+
+function updateTestConfig(id, projectId, inputMethod, input, outputMethod, expectedOutput, callback) {
+  const query = `UPDATE TestConfig SET project_id = ?, input_method = ?, input = ?, output_method = ?, expected_output = ? WHERE id = ?`;
+  db.run(query, [projectId, inputMethod, input, outputMethod, expectedOutput, id], function (err) {
+    callback(err, this.changes);
+  });
+}
+
+function deleteTestConfig(id, callback) {
+  const query = `DELETE FROM TestConfig WHERE id = ?`;
+  db.run(query, [id], function (err) {
+    callback(err, this.changes);
+  });
+}
+
+// Submissions Table Methods
+function addSubmission(projectId, studentId, status, path, errorMessage, actualOutput, callback) {
+  const query = `INSERT INTO Submissions (project_id, student_id, status, path, error_message, actual_output) VALUES (?, ?, ?, ?, ?, ?)`;
+  db.run(query, [projectId, studentId, status, path, errorMessage, actualOutput], function (err) {
+    callback(err, this.lastID);
+  });
+}
+
+function getSubmissions(callback) {
+  const query = `SELECT * FROM Submissions`;
+  db.all(query, [], (err, rows) => {
+    callback(err, rows);
+  });
+}
+
+function updateSubmission(id, projectId, studentId, status, path, errorMessage, actualOutput, callback) {
+  const query = `UPDATE Submissions SET project_id = ?, student_id = ?, status = ?, path = ?, error_message = ?, actual_output = ? WHERE id = ?`;
+  db.run(query, [projectId, studentId, status, path, errorMessage, actualOutput, id], function (err) {
+    callback(err, this.changes);
+  });
+}
+
+function deleteSubmission(id, callback) {
+  const query = `DELETE FROM Submissions WHERE id = ?`;
+  db.run(query, [id], function (err) {
+    callback(err, this.changes);
+  });
+}
+
+// Other Methods
+function updateSubmissionStatus(id, status, callback) {
+  const query = `UPDATE Submissions SET status = ? WHERE id = ?`;
+  db.run(query, [status, id], function (err) {
+    callback(err, this.changes);
+  });
+}
+
+function getConfigurationByProjectId(projectId, callback) {
+  const query = `SELECT * FROM Configurations WHERE id = (SELECT config_id FROM Projects WHERE id = ?)`;
+  db.get(query, [projectId], (err, row) => {
+    callback(err, row);
+  });
+}
+
+function getSubmissionsAndTestConfig(projectId, callback) {
+  const query = `SELECT s.*, tc.* FROM Submissions s
+                 JOIN TestConfig tc ON s.project_id = tc.project_id
+                 WHERE s.project_id = ?`;
+  db.all(query, [projectId], (err, rows) => {
+    callback(err, rows);
+  });
+}
+
+
+// Close the database connection
+function closeDatabase() {
+  db.close((err) => {
+    if (err) {
+      console.error("Error closing the database:", err.message);
+    } else {
+      console.log("Database closed.");
+    }
+  });
+}
+
+
+
+module.exports = {
+  initializeDatabase,
+  addProject,
+  getProjects,
+  updateProject,
+  deleteProject,
+  addConfiguration,
+  getConfigurations,
+  updateConfiguration,
+  deleteConfiguration,
+  addTestConfig,
+  getTestConfigs,
+  updateTestConfig,
+  deleteTestConfig,
+  addSubmission,
+  getSubmissions,
+  updateSubmission,
+  deleteSubmission,
+  updateSubmissionStatus,
+  getConfigurationByProjectId,
+  getSubmissionsAndTestConfig,
+  closeDatabase,
+};
