@@ -26,7 +26,7 @@ function extractAndSaveSubmissions(submissionsDir, outputDir, projectId) {
   
         // klasör var mı kontrol etme
         if (fs.existsSync(extractPath)) {
-          addSubmission(projectId, studentId,'', extractPath, '', '', 
+          addSubmission(projectId, studentId,'pending', extractPath, '', '', 
             (err, id) => {
               if (err) {
                 console.error(`Failed to insert successful submission for ${studentId}:`, err.message);

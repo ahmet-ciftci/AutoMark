@@ -216,6 +216,14 @@ function getSubmissionsAndTestConfig(projectId, callback) {
   });
 }
 
+function updateActualOutput(id, actualOutput, callback) {
+  const query = `UPDATE Submissions SET actual_output = ? WHERE id = ?`;
+  db.run(query, [actualOutput, id], function (err) {
+    callback(err, this.changes);
+  });
+}
+
+
 
 // Close the database connection
 function closeDatabase() {
@@ -227,6 +235,7 @@ function closeDatabase() {
     }
   });
 }
+
 
 
 
@@ -251,5 +260,6 @@ module.exports = {
   updateSubmissionStatus,
   getConfigurationByProjectId,
   getSubmissionsAndTestConfig,
+  updateActualOutput,
   closeDatabase,
 };
