@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { FaFilePdf, FaFileCsv, FaFileCode, FaDownload, FaTimes, FaCheck } from 'react-icons/fa'
 
 const ReportsView = () => {
@@ -8,17 +8,24 @@ const ReportsView = () => {
   const [hoveredOutputIndex, setHoveredOutputIndex] = useState(null)
   const [selectedSubmission, setSelectedSubmission] = useState(null)
 
-  // Example mock data (replace with real data)
-  // The 'score' field is likely calculated based on output comparison, not stored directly.
-  const submissions = [
-    { id: 'sub1', status: 'Success', path: '/path/sub1', error_message: '', actual_output: '42', score: '100' }, // Renamed 'error' to 'error_message', 'output' to 'actual_output'
-    { id: 'sub2', status: 'Failed', path: '/path/sub2', error_message: 'Segfault', actual_output: '', score: '0' }, // Renamed 'error' to 'error_message', 'output' to 'actual_output'
-  ]
+  const [submissions, setSubmissions] = useState([])
+  const [outputs, setOutputs] = useState([])
 
-  const outputs = [
-    { expected: true, value: '42', matching: true },
-    { actual: true, value: '41', matching: false }
-  ]
+  useEffect(() => {
+    const projectId = 101
+    window.electron.getSubmissions(projectId).then(rows => {
+      setSubmissions(rows)
+
+      const transformedOutputs = rows.map((row, idx) => ({
+        id: idx,
+        expected: true,
+        actual: true,
+        value: row.actual_output || '',
+        matching: row.actual_output === row.expected_output,
+      }))
+      setOutputs(transformedOutputs)
+    })
+  }, [])
 
   const handleReportSelection = (submissionId) => {
     setSelectedReports(prev =>
@@ -44,7 +51,7 @@ const ReportsView = () => {
   return (
     <div className="h-full flex flex-col">
       <h1 className="text-2xl font-bold mb-6 text-gray-200">Submission Reports</h1>
-
+  
       {/* Export Controls */}
       <div className="mb-4 flex justify-end">
         <button className="btn-secondary flex items-center" onClick={() => setShowExportSelection(true)}>
@@ -52,7 +59,7 @@ const ReportsView = () => {
           Export Report
         </button>
       </div>
-
+  
       {/* Export Selection Modal */}
       {showExportSelection && (
         <div className="modal-backdrop">
@@ -66,11 +73,11 @@ const ReportsView = () => {
             <div className="p-4 overflow-auto flex-1">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {submissions.map(sub => {
-                  const isSelected = selectedReports.includes(sub.id)
+                  const isSelected = selectedReports.includes(sub.submission_id)
                   return (
                     <div
-                      key={sub.id}
-                      onClick={() => handleReportSelection(sub.id)}
+                      key={sub.submission_id}
+                      onClick={() => handleReportSelection(sub.submission_id)}
                       className={`p-4 rounded cursor-pointer ${
                         isSelected
                           ? 'bg-primary-700/30 border border-primary-500'
@@ -78,9 +85,9 @@ const ReportsView = () => {
                       }`}
                     >
                       <div className="flex justify-between">
-                        <span className="text-gray-300 font-medium">#{sub.id}</span>
-                        <span className={`px-2 py-1 rounded text-sm ${getScoreColorClass(sub.score)}`}>
-                          {sub.score}
+                        <span className="text-gray-300 font-medium">Student {sub.student_id}</span>
+                        <span className={`px-2 py-1 rounded text-sm ${getScoreColorClass(sub.score || 0)}`}>
+                          {sub.score || '0'}
                         </span>
                       </div>
                       {isSelected && <FaCheck className="text-primary-400 float-right mt-2" />}
@@ -89,26 +96,10 @@ const ReportsView = () => {
                 })}
               </div>
             </div>
-            <div className="card-footer flex justify-end space-x-3">
-              <button className="btn-secondary" onClick={() => setShowExportSelection(false)}>Cancel</button>
-              {selectedReports.length > 0 && (
-                <>
-                  <button className="btn-danger" onClick={() => exportReport('pdf')}>
-                    <FaFilePdf className="mr-2" /> PDF
-                  </button>
-                  <button className="btn-success" onClick={() => exportReport('csv')}>
-                    <FaFileCsv className="mr-2" /> CSV
-                  </button>
-                  <button className="btn-primary" onClick={() => exportReport('json')}>
-                    <FaFileCode className="mr-2" /> JSON
-                  </button>
-                </>
-              )}
-            </div>
           </div>
         </div>
       )}
-
+  
       {/* Main Content Grid */}
       <div className="grid grid-cols-3 gap-4 mb-4">
         {/* Submissions List */}
@@ -117,19 +108,19 @@ const ReportsView = () => {
           <div className="p-2">
             {submissions.map(sub => (
               <div
-                key={sub.id}
+                key={sub.submission_id}
                 className={`flex justify-between p-2 cursor-pointer rounded hover:bg-dark-hover text-gray-200 ${
-                  selectedSubmission === sub.id ? 'bg-dark-hover' : ''
+                  selectedSubmission === sub.submission_id ? 'bg-dark-hover' : ''
                 }`}
-                onClick={() => setSelectedSubmission(sub.id)}
+                onClick={() => setSelectedSubmission(sub.submission_id)}
               >
-                <span>{sub.id}</span>
-                <span>{sub.score}</span>
+                <span>Student {sub.student_id}</span>
+                <span>{sub.status}</span>
               </div>
             ))}
           </div>
         </div>
-
+  
         {/* Expected Output */}
         <div className="card">
           <div className="card-header justify-center">Expected Output</div>
@@ -151,7 +142,7 @@ const ReportsView = () => {
               ))}
           </div>
         </div>
-
+  
         {/* Actual Output */}
         <div className="card">
           <div className="card-header justify-center">Output</div>
@@ -178,22 +169,29 @@ const ReportsView = () => {
           </div>
         </div>
       </div>
-
+  
       {/* Summary Footer */}
       <div className="card-footer mt-2 sticky bottom-0">
         <div className="flex justify-end space-x-6">
           <div>
             <span className="text-gray-400">Matches:</span>
-            <span className="ml-2 text-white font-medium">0/0</span>
+            <span className="ml-2 text-white font-medium">
+              {outputs.filter(o => o.matching).length}/{outputs.length}
+            </span>
           </div>
           <div>
             <span className="text-gray-400">Score:</span>
-            <span className="ml-2 text-white">0%</span>
+            <span className="ml-2 text-white">
+              {outputs.length > 0
+                ? Math.round((outputs.filter(o => o.matching).length / outputs.length) * 100) + '%'
+                : '0%'}
+            </span>
           </div>
         </div>
       </div>
     </div>
   )
+  
 }
 
 export default ReportsView
