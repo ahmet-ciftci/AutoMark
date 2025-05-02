@@ -26,6 +26,23 @@ function createWindow() {
 app.whenReady().then(() => {
   createWindow();
 
+  // Handle directory selection dialog
+  ipcMain.handle('open-directory', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openDirectory']
+    });
+    return result.canceled ? '' : result.filePaths[0];
+  });
+
+  // Handle file selection dialog
+  ipcMain.handle('open-file', async (event, options) => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openFile'],
+      filters: options?.filters || [{ name: 'All Files', extensions: ['*'] }]
+    });
+    return result.canceled ? '' : result.filePaths[0];
+  });
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
