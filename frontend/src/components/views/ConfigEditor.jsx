@@ -4,6 +4,7 @@ import { FaFolder, FaSave, FaTimes } from 'react-icons/fa'
 const ConfigEditor = ({ selectedLanguage = 'Java', onCancelConfig, onSaveConfig }) => {
   // State for configuration settings
   const [compilerPath, setCompilerPath] = useState('')
+  const [compilerName, setCompilerName] = useState('') // Added compilerName state
   const [compileCommand, setCompileCommand] = useState('')
   const [runCommand, setRunCommand] = useState('')
   const [needsCompilation, setNeedsCompilation] = useState(true)
@@ -13,30 +14,35 @@ const ConfigEditor = ({ selectedLanguage = 'Java', onCancelConfig, onSaveConfig 
     switch (selectedLanguage) {
       case 'Java':
         setCompilerPath('C:\\Program Files\\Java\\jdk-21\\bin\\javac.exe')
+        setCompilerName('javac') // Default compiler name for Java
         setCompileCommand('javac Main.java')
         setRunCommand('java Main')
         setNeedsCompilation(true)
         break
       case 'C':
         setCompilerPath('C:\\Program Files\\MSVC\\bin\\cl.exe')
+        setCompilerName('gcc') // Default compiler name for C
         setCompileCommand('gcc main.c -o program')
         setRunCommand('./program')
         setNeedsCompilation(true)
         break
       case 'C++':
         setCompilerPath('C:\\Program Files\\MSVC\\bin\\cl.exe')
+        setCompilerName('g++') // Default compiler name for C++
         setCompileCommand('g++ main.cpp -o program')
         setRunCommand('./program')
         setNeedsCompilation(true)
         break
       case 'Python':
         setCompilerPath('C:\\Program Files\\Python\\python.exe')
+        setCompilerName('python') // Default compiler name for Python
         setCompileCommand('')
         setRunCommand('python main.py')
         setNeedsCompilation(false)
         break
       default:
         setCompilerPath('')
+        setCompilerName('') // Default empty compiler name
         setCompileCommand('')
         setRunCommand('')
         setNeedsCompilation(true)
@@ -66,6 +72,7 @@ const ConfigEditor = ({ selectedLanguage = 'Java', onCancelConfig, onSaveConfig 
     const config = {
       language: selectedLanguage,
       compilerPath,
+      compilerName, // Include compilerName in the saved config
       compileCommand,
       runCommand,
     }
@@ -108,6 +115,17 @@ const ConfigEditor = ({ selectedLanguage = 'Java', onCancelConfig, onSaveConfig 
                   <FaFolder className="text-gray-300" />
                 </button>
               </div>
+            </div>
+
+            <div className="flex items-center">
+              <div className="w-40 text-gray-300">Compiler Name:</div>
+              <input
+                type="text"
+                value={compilerName}
+                onChange={(e) => setCompilerName(e.target.value)}
+                className="input-field flex-1"
+                placeholder="Name of the compiler executable (e.g., javac, gcc, python)"
+              />
             </div>
 
             <div className="flex items-center">
