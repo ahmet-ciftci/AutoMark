@@ -8,6 +8,8 @@ const ConfigEditor = ({ selectedLanguage = null, onCancelConfig, onSaveConfig })
   const [compile_parameters, setCompileParameters] = useState('');
   const [run_command, setRunCommand] = useState('');
 
+  const [config_id, setConfigId] = useState(null);
+
   const [placeholders, setPlaceholders] = useState({
     compileCommand: 'Compilation command (if needed)',
     sourceCode: 'Source file name(s)',
@@ -16,15 +18,28 @@ const ConfigEditor = ({ selectedLanguage = null, onCancelConfig, onSaveConfig })
   });
 
   useEffect(() => {
-    // Set config_name if editing an existing one
-    setConfigName(selectedLanguage || '');
-
-    // Reset fields when selectedLanguage changes
-    setCompileCommand('');
-    setSourceCode('');
-    setCompileParameters('');
-    setRunCommand('');
+    const loadConfigData = async () => {
+      if (!selectedLanguage) return;
+  
+      try {
+        const config = await window.electron.getConfigByName(selectedLanguage);
+        if (config) {
+          setConfigId(config.id);
+          setConfigName(config.name || '');
+          setCompileCommand(config.compile_command || '');
+          setSourceCode(config.source_code || '');
+          setCompileParameters(config.compile_parameters || '');
+          setRunCommand(config.run_command || '');
+        }
+      } catch (error) {
+        console.error('Error loading config:', error);
+      }
+    };
+  
+    loadConfigData();
   }, [selectedLanguage]);
+  
+  
 
   const onPickCompilerPath = () => {
     console.log('Pick compiler path button clicked');
@@ -52,21 +67,30 @@ const ConfigEditor = ({ selectedLanguage = null, onCancelConfig, onSaveConfig })
     }
   };
 
-  const handleSaveConfig = () => {
+  const handleSaveConfig = async () => {
     const config = {
-      name: config_name.trim() || 'Untitled Configuration',
-      compile_command: compile_command || null,
-      source_code: source_code || null,
-      compile_parameters: compile_parameters || null,
-      run_command: run_command || null,
+      id: config_id,
+      config_name: config_name.trim() || 'Untitled Configuration',
+      compile_command,
+      source_code,
+      compile_parameters,
+      run_command,
     };
-
-    if (onSaveConfig) {
-      onSaveConfig(config);
-    } else if (onCancelConfig) {
-      onCancelConfig();
+  
+    try {
+      if (config.id) {
+        await window.electron.updateConfig(config);
+      } else {
+        await window.electron.saveConfig(config);
+      }
+      
+      onSaveConfig?.(config); 
+    } catch (error) {
+      console.error('Error saving configuration:', error);
     }
   };
+  
+  
 
   return (
     <div className="max-w-4xl mx-auto">

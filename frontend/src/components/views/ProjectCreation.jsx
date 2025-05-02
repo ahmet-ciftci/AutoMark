@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { FaFolder, FaChevronDown, FaPencilAlt, FaFileImport, FaFileExport, FaPlus, FaCheck, FaTerminal, FaFileAlt, FaFileCode, FaKeyboard } from 'react-icons/fa'
+import ConfigEditor from './ConfigEditor';
 
-const ProjectCreation = ({ onEditLang, onCreateProject, onNewLangConfig }) => {
+const ProjectCreation = ({onCreateProject, onNewLangConfig }) => {
   const [project_name, setProjectName] = useState('')
   const [submissions_directory, setSubmissionsDirectory] = useState('')
   const [selectedLanguage, setSelectedLanguage] = useState('')
@@ -26,6 +27,13 @@ const ProjectCreation = ({ onEditLang, onCreateProject, onNewLangConfig }) => {
   const [combinedExpectedOutputScriptCommand, setCombinedExpectedOutputScriptCommand] = useState('')
   const [expectedOutputFilePath, setExpectedOutputFilePath] = useState('')
 
+  const [isEditing, setIsEditing] = useState(false);
+  
+  const handleEditLang = () => {
+    if (!selectedLanguage) return;
+    setIsEditing(true);
+  };
+  
   const languageDropdownRef = useRef(null)
 
   const [testPlaceholders, setTestPlaceholders] = useState({
@@ -63,18 +71,34 @@ const ProjectCreation = ({ onEditLang, onCreateProject, onNewLangConfig }) => {
     }
   }, [expectedOutputScriptCommand, expectedOutputScriptFilePath])
 
+
+  //CONFIGURATION DROPDOWN
   useEffect(() => {
     const fetchConfigurations = async () => {
       try {
-        const mockConfigs = []
-        setConfigurations(mockConfigs)
+        const configs = await window.electron.getConfigurations();
+        setConfigurations(configs); // dropdownn set
       } catch (error) {
-        console.error('Failed to fetch configurations:', error)
+        console.error('Failed to fetch configurations:', error);
       }
-    }
+    };
+  
+    fetchConfigurations();
+  }, []);
 
-    fetchConfigurations()
-  }, [])
+  const onSaveConfig = (updatedConfig) => {
+    setSelectedLanguage(updatedConfig.config_name); 
+    setSelectedConfigId(updatedConfig.id);          
+    setShowLanguages(false);                        
+    setIsEditing(false); 
+    
+    window.electron.getConfigurations().then((configs) => {
+      setConfigurations(configs);
+    });
+  };
+  
+  
+  
 
   useEffect(() => {
     setManualInput('')
@@ -244,6 +268,15 @@ const ProjectCreation = ({ onEditLang, onCreateProject, onNewLangConfig }) => {
   }
 
   return (
+    <>
+    {isEditing && (
+      <ConfigEditor
+        selectedLanguage={selectedLanguage}
+        onCancelConfig={() => setIsEditing(false)}
+        onSaveConfig={onSaveConfig}
+      />
+    )}
+
     <div className="max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-8 text-gray-200">Create New Project</h1>
 
@@ -341,7 +374,7 @@ const ProjectCreation = ({ onEditLang, onCreateProject, onNewLangConfig }) => {
                   </button>
 
                   <button
-                    onClick={() => onEditLang(selectedLanguage)}
+                    onClick={handleEditLang}
                     className="btn-outline hover:border-primary-500 hover:bg-primary-700/20 hover:text-primary-400"
                     title="Edit configuration"
                     disabled={!selectedLanguage}
@@ -657,6 +690,7 @@ const ProjectCreation = ({ onEditLang, onCreateProject, onNewLangConfig }) => {
         </div>
       </div>
     </div>
+    </>
   )
 }
 

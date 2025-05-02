@@ -116,11 +116,21 @@ function addConfiguration(name, compileCommand, sourceCode, compileParameters, r
 }
 
 function getConfigurations(callback) {
-  const query = `SELECT * FROM Configurations`;
+  const query = `
+    SELECT 
+      id AS config_id,
+      name AS config_name,
+      compile_command,
+      source_code,
+      compile_parameters,
+      run_command
+    FROM Configurations`;
+  
   db.all(query, [], (err, rows) => {
     callback(err, rows);
   });
 }
+
 
 function updateConfiguration(id, name, compileCommand, sourceCode, compileParameters, runCommand, callback) {
   const query = `UPDATE Configurations SET name = ?, compile_command = ?, source_code = ?, compile_parameters = ?, run_command = ? WHERE id = ?`;
@@ -225,6 +235,12 @@ function updateActualOutput(id, actualOutput, callback) {
   });
 }
 
+function getConfigurationByName(name, callback) {
+  const query = `SELECT * FROM Configurations WHERE name = ?`;
+  db.get(query, [name], (err, row) => {
+    callback(err, row);
+  });
+}
 
 
 // Close the database connection
@@ -274,4 +290,6 @@ module.exports = {
   updateActualOutput,
   closeDatabase,
   submissionExists,
+  getConfigurationByName,
+
 };

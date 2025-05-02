@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
+const db = require('./backend/Database');
 const { getSubmissionsAndTestConfig } = require('./backend/Database.js');
 let mainWindow;
 
@@ -25,8 +26,11 @@ function createWindow() {
 
 
 app.whenReady().then(() => {
+  
   createWindow();
 
+  db.initializeDatabase();
+  
   // Handle directory selection dialog
   ipcMain.handle('open-directory', async () => {
     const result = await dialog.showOpenDialog(mainWindow, {
@@ -56,6 +60,58 @@ app.whenReady().then(() => {
       });
     });
   });
+
+  ipcMain.handle('save-config', async (event, config) => {
+    return new Promise((resolve, reject) => {
+      db.addConfiguration(
+        config.config_name,
+        config.compile_command,
+        config.source_code,
+        config.compile_parameters,
+        config.run_command,
+        (err, id) => {
+          if (err) reject(err);
+          else resolve(id);
+        }
+      );
+    });
+  });
+
+  ipcMain.handle('get-configs', async () => {
+    return new Promise((resolve, reject) => {
+      db.getConfigurations((err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+  });
+
+  ipcMain.handle('get-config-by-name', async (event, name) => {
+    return new Promise((resolve, reject) => {
+      db.getConfigurationByName(name, (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+  });
+  
+  ipcMain.handle('update-config', async (event, config) => {
+    return new Promise((resolve, reject) => {
+      db.updateConfiguration(
+        config.id,
+        config.config_name,
+        config.compile_command,
+        config.source_code,
+        config.compile_parameters,
+        config.run_command,
+        (err, changes) => {
+          if (err) reject(err);
+          else resolve(changes);
+        }
+      );
+    });
+  });
+  
 
 
   app.on('activate', () => {
