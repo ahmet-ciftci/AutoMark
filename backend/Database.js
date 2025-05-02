@@ -13,68 +13,70 @@ function initializeDatabase() {
     fs.mkdirSync(documentsPath);
   }
 
-  const dbExists = fs.existsSync(dbPath);
-
   const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
-      console.error("❌ Failed to connect to database:", err.message);
+      console.error("Failed to connect to database:", err.message);
       return;
     }
 
-    if (dbExists) {
-      console.log("Database already exists at:", dbPath);
-    } else {
-      console.log("Creating and initializing database at:", dbPath);
+    console.log("Database connected at:", dbPath);
+  });
 
-      db.serialize(() => {
-        // Create Projects table
-        db.run(`CREATE TABLE IF NOT EXISTS Projects (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            config_id INTEGER,
-            submissions_path TEXT NOT NULL,
-            FOREIGN KEY (config_id) REFERENCES Configurations(id)
-          );`);
-    
-        // Create Configurations table
-        db.run(`CREATE TABLE IF NOT EXISTS Configurations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            compile_command TEXT,
-            source_code TEXT,
-            compile_parameters TEXT,
-            run_command TEXT
-          );`);
-    
-        // Create TestConfig table
-        db.run(`CREATE TABLE IF NOT EXISTS TestConfig (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            project_id INTEGER,
-            input_method TEXT,
-            input TEXT,
-            output_method TEXT,
-            expected_output TEXT,
-            FOREIGN KEY (project_id) REFERENCES Projects(id)
-          );`);
-    
-        // Create Submissions table
-        db.run(`CREATE TABLE IF NOT EXISTS Submissions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            project_id INTEGER,
-            student_id TEXT,
-            status TEXT,
-            path TEXT,
-            error_message TEXT,
-            actual_output TEXT,
-            FOREIGN KEY (project_id) REFERENCES Projects(id)
-          );`);
-    
-        console.log("Database initialized at:", dbPath);
-      });
+  db.serialize(() => {
+    // Create Projects table
+    db.run(`CREATE TABLE IF NOT EXISTS Projects (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        config_id INTEGER,
+        submissions_path TEXT NOT NULL,
+        FOREIGN KEY (config_id) REFERENCES Configurations(id)
+      );`);
+
+    // Create Configurations table
+    db.run(`CREATE TABLE IF NOT EXISTS Configurations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        compile_command TEXT,
+        source_code TEXT,
+        compile_parameters TEXT,
+        run_command TEXT
+      );`);
+
+    // Create TestConfig table
+    db.run(`CREATE TABLE IF NOT EXISTS TestConfig (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        project_id INTEGER,
+        input_method TEXT,
+        input TEXT,
+        output_method TEXT,
+        expected_output TEXT,
+        FOREIGN KEY (project_id) REFERENCES Projects(id)
+      );`);
+
+    // Create Submissions table
+    db.run(`CREATE TABLE IF NOT EXISTS Submissions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        project_id INTEGER,
+        student_id TEXT,
+        status TEXT,
+        path TEXT,
+        error_message TEXT,
+        actual_output TEXT,
+        FOREIGN KEY (project_id) REFERENCES Projects(id)
+      );`);
+
+    console.log("All tables ensured (created if not exist).");
+  });
+
+  db.close((err) => {
+    if (err) {
+      console.error("Error closing database:", err.message);
+    } else {
+      console.log("Database connection closed.");
     }
   });
-  db.close();
 }
+
 
 // Projects Table Methods
 function addProject(name, configId, submissionsPath, callback) {
@@ -228,6 +230,15 @@ function closeDatabase() {
   });
 }
 
+function submissionExists(projectId, studentId, callback) {
+  const query = `SELECT COUNT(*) as count FROM Submissions WHERE project_id = ? AND student_id = ?`;
+  db.get(query, [projectId, studentId], (err, row) => {
+    if (err) callback(err, null);
+    else callback(null, row.count > 0);
+  });
+}
+
+
 
 
 module.exports = {
@@ -252,4 +263,5 @@ module.exports = {
   getConfigurationByProjectId,
   getSubmissionsAndTestConfig,
   closeDatabase,
+  submissionExists,
 };
