@@ -9,7 +9,7 @@ import FileExplorer from './components/views/FileExplorer'
 
 function App() {
   const [activeView, setActiveView] = useState('project')
-  const [selectedLanguage, setSelectedLanguage] = useState('Java')
+  const [selectedLanguage, setSelectedLanguage] = useState('Java') // Can be null for 'new' config
   const [key, setKey] = useState(0) // For view transitions
   
   // Force dark mode
@@ -35,6 +35,12 @@ function App() {
     switchView('config')
   }
 
+  // Handler for the New button in ProjectCreation
+  const onNewLanguageConfig = () => {
+    setSelectedLanguage(null); // Set language to null to indicate a new config
+    switchView('config');
+  };
+
   // Handler for project creation
   const onCreateProject = (projectConfig) => {
     switchView('reports')
@@ -59,7 +65,7 @@ function App() {
     switch (activeView) {
       case 'config':
         return <ConfigEditor 
-                 selectedLanguage={selectedLanguage}
+                 selectedLanguage={selectedLanguage} // Pass null if creating new
                  onCancelConfig={onCancelConfig}
                  onSaveConfig={onSaveConfig}
                />
@@ -67,6 +73,7 @@ function App() {
         return <ProjectCreation 
                  onEditLang={onEditLanguage}
                  onCreateProject={onCreateProject}
+                 onNewLangConfig={onNewLanguageConfig} // Pass the new handler
                />
       case 'reports':
         return <ReportsView />
