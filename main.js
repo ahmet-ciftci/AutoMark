@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
-
+const { getSubmissionsAndTestConfig } = require('./backend/Database.js');
 let mainWindow;
 
 function createWindow() {
@@ -16,6 +16,7 @@ function createWindow() {
       sandbox: true
     },
   });
+
 
   mainWindow.loadFile(path.join(__dirname, 'frontend', 'dist', 'index.html'));
   mainWindow.setMenu(null);
@@ -42,6 +43,20 @@ app.whenReady().then(() => {
     });
     return result.canceled ? '' : result.filePaths[0];
   });
+
+
+  ipcMain.handle('get-submissions', async (event, projectId) => {
+    return new Promise((resolve, reject) => {
+      getSubmissionsAndTestConfig(projectId, (err, rows) => {
+        if (err) reject(err);
+        else {
+          console.log('Submissions:', rows);
+          resolve(rows)
+        }
+      });
+    });
+  });
+
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
