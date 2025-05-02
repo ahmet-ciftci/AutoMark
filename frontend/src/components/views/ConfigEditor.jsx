@@ -1,17 +1,13 @@
 import { useState, useEffect } from 'react'
-import { FaFolder, FaSave, FaTimes, FaTerminal, FaFileAlt } from 'react-icons/fa'
+import { FaFolder, FaSave, FaTimes } from 'react-icons/fa'
 
 const ConfigEditor = ({ selectedLanguage = 'Java', onCancelConfig, onSaveConfig }) => {
   // State for configuration settings
   const [compilerPath, setCompilerPath] = useState('')
   const [compileCommand, setCompileCommand] = useState('')
   const [runCommand, setRunCommand] = useState('')
-  const [useArguments, setUseArguments] = useState(true)
-  const [useScript, setUseScript] = useState(false)
-  const [input, setInput] = useState('')
-  const [expectedOutput, setExpectedOutput] = useState('')
   const [needsCompilation, setNeedsCompilation] = useState(true)
-
+  
   // Set default values based on the selected language
   useEffect(() => {
     switch (selectedLanguage) {
@@ -19,45 +15,36 @@ const ConfigEditor = ({ selectedLanguage = 'Java', onCancelConfig, onSaveConfig 
         setCompilerPath('C:\\Program Files\\Java\\jdk-21\\bin\\javac.exe')
         setCompileCommand('javac Main.java')
         setRunCommand('java Main')
-        setInput('5')
-        setExpectedOutput('1,1,2,3,5,8,13,21,34,55')
         setNeedsCompilation(true)
         break
       case 'C':
         setCompilerPath('C:\\Program Files\\MSVC\\bin\\cl.exe')
         setCompileCommand('gcc main.c -o program')
         setRunCommand('./program')
-        setInput('8')
-        setExpectedOutput('1,1,2,3,5,8,13,21,34')
         setNeedsCompilation(true)
         break
       case 'C++':
         setCompilerPath('C:\\Program Files\\MSVC\\bin\\cl.exe')
         setCompileCommand('g++ main.cpp -o program')
         setRunCommand('./program')
-        setInput('7')
-        setExpectedOutput('1,1,2,3,5,8,13,21')
         setNeedsCompilation(true)
         break
       case 'Python':
         setCompilerPath('C:\\Program Files\\Python\\python.exe')
         setCompileCommand('')
         setRunCommand('python main.py')
-        setInput('6')
-        setExpectedOutput('1,1,2,3,5,8,13')
         setNeedsCompilation(false)
         break
       default:
         setCompilerPath('')
         setCompileCommand('')
         setRunCommand('')
-        setInput('')
-        setExpectedOutput('')
         setNeedsCompilation(true)
     }
   }, [selectedLanguage])
 
   const onPickCompilerPath = () => {
+    setCompilerPath(`C:\\Program Files\\${selectedLanguage}\\bin\\compiler.exe`)
     console.log('Pick compiler path button clicked')
   }
 
@@ -67,24 +54,6 @@ const ConfigEditor = ({ selectedLanguage = 'Java', onCancelConfig, onSaveConfig 
 
   const onChangeRunCmd = (e) => {
     setRunCommand(e.target.value)
-  }
-
-  const onToggleArgument = () => {
-    setUseArguments(true)
-    setUseScript(false)
-  }
-
-  const onToggleScript = () => {
-    setUseScript(true)
-    setUseArguments(false)
-  }
-
-  const onInputChange = (e) => {
-    setInput(e.target.value)
-  }
-
-  const onExpectedChange = (e) => {
-    setExpectedOutput(e.target.value)
   }
 
   const handleCancelConfig = () => {
@@ -99,10 +68,6 @@ const ConfigEditor = ({ selectedLanguage = 'Java', onCancelConfig, onSaveConfig 
       compilerPath,
       compileCommand,
       runCommand,
-      useArguments,
-      useScript,
-      input,
-      expectedOutput,
     }
     
     if (onSaveConfig) {
@@ -168,62 +133,6 @@ const ConfigEditor = ({ selectedLanguage = 'Java', onCancelConfig, onSaveConfig 
                 className="input-field flex-1"
                 placeholder="Command to run the compiled code"
               />
-            </div>
-          </div>
-        </div>
-
-        {/* Enhanced Test Case Card */}
-        <div className="card">
-          <div className="card-header">
-            <h2>Test Case Configuration</h2>
-          </div>
-          
-          <div className="card-body space-y-5">
-            <div className="flex items-center">
-              <div className="w-40 text-gray-300">Input Method:</div>
-              <div className="flex space-x-4">
-                <div 
-                  onClick={onToggleArgument}
-                  className={`toggle-btn ${useArguments 
-                    ? 'bg-primary-700/30 border-primary-500 text-white' 
-                    : 'bg-dark-bg border-dark-border text-gray-400 hover:border-dark-hover hover:bg-dark-hover/30'}`}
-                >
-                  <FaTerminal className={`mr-2 ${useArguments ? 'text-primary-400' : 'text-gray-500'}`} />
-                  Command Arguments
-                </div>
-                <div 
-                  onClick={onToggleScript}
-                  className={`toggle-btn ${useScript 
-                    ? 'bg-primary-700/30 border-primary-500 text-white' 
-                    : 'bg-dark-bg border-dark-border text-gray-400 hover:border-dark-hover hover:bg-dark-hover/30'}`}
-                >
-                  <FaFileAlt className={`mr-2 ${useScript ? 'text-primary-400' : 'text-gray-500'}`} />
-                  Script File
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center">
-              <div className="w-40 text-gray-300">Input:</div>
-              <input
-                type="text"
-                value={input}
-                onChange={onInputChange}
-                className="input-field flex-1"
-                placeholder="Input values for testing"
-              />
-            </div>
-
-            <div className="flex">
-              <div className="w-40 text-gray-300 mt-2">Expected Output:</div>
-              <div className="flex-1">
-                <textarea
-                  value={expectedOutput}
-                  onChange={onExpectedChange}
-                  className="input-field w-full h-24 resize-none font-mono text-sm"
-                  placeholder="Expected output for comparison"
-                />
-              </div>
             </div>
           </div>
         </div>
