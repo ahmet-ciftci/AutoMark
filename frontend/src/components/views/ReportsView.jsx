@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { FaFilePdf, FaFileCsv, FaFileCode, FaDownload, FaTimes, FaCheck } from 'react-icons/fa'
 
-const ReportsView = () => {
+const ReportsView = ({projectId}) => {
   const [showExportOptions, setShowExportOptions] = useState(false)
   const [showExportSelection, setShowExportSelection] = useState(false)
   const [selectedReports, setSelectedReports] = useState([])
@@ -11,8 +11,22 @@ const ReportsView = () => {
   const [submissions, setSubmissions] = useState([])
   const [outputs, setOutputs] = useState([])
 
+  const [projectId, setProjectId] = useState(null);
+  const [project, setProject] = useState(null)
   useEffect(() => {
-    const projectId = 101
+    // Fetch project details and submissions
+    window.electron.getProjectById(projectId).then(row => {
+      setProject(row)
+    })
+    // Extract and save submissions ---------- ADD THE OUTPUT PATHHHH  HERE
+    window.electron.extractAndSaveSubmissions(project.submissions_path, "", projectId).then(() => {})
+    // Compile submissions
+    window.electron.compileAllInProject(projectId).then(() => {})
+    // Run all submissions
+    window.electron.runAllSubmissions(projectId).then(() => {})
+
+
+    // Fetch submissions
     window.electron.getSubmissions(projectId).then(rows => {
       setSubmissions(rows)
 
@@ -25,6 +39,7 @@ const ReportsView = () => {
       }))
       setOutputs(transformedOutputs)
     })
+    
   }, [])
 
   const handleReportSelection = (submissionId) => {

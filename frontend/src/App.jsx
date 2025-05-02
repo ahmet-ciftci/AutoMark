@@ -42,7 +42,8 @@ function App() {
   };
 
   // Handler for project creation
-  const onCreateProject = (projectConfig) => {
+  const onCreateProject = (project) => {
+    setProjectId(project.id);
     switchView('reports')
   }
   
@@ -76,7 +77,7 @@ function App() {
                  onNewLangConfig={onNewLanguageConfig} // Pass the new handler
                />
       case 'reports':
-        return <ReportsView />
+        return <ReportsView projectId={projectId}/>
       case 'fileExplorer':
         return <FileExplorer />
       default:

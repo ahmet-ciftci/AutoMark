@@ -246,6 +246,12 @@ function submissionExists(projectId, studentId, callback) {
   });
 }
 
+function getProjectById(projectId, callback) {
+  const query = `SELECT * FROM Projects WHERE id = ?`;
+  db.get(query, [projectId], (err, row) => {
+    callback(err, row);
+  });
+}
 
 
 
@@ -274,4 +280,5 @@ module.exports = {
   updateActualOutput,
   closeDatabase,
   submissionExists,
+  getProjectById,
 };

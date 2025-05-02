@@ -1,6 +1,11 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const { getSubmissionsAndTestConfig } = require('./backend/Database.js');
+const { extractAndSaveSubmissions } = require('./backend/FileManager.js');
+const { getProjectById } = require('./backend/Database.js');
+const { compileAllInProject } = require('./backend/Runner.js');
+const {runAllCompiledSubmissions} = require('./backend/Runner.js');
+
 let mainWindow;
 
 function createWindow() {
@@ -16,7 +21,6 @@ function createWindow() {
       sandbox: true
     },
   });
-
 
   mainWindow.loadFile(path.join(__dirname, 'frontend', 'dist', 'index.html'));
   mainWindow.setMenu(null);
@@ -44,7 +48,7 @@ app.whenReady().then(() => {
     return result.canceled ? '' : result.filePaths[0];
   });
 
-
+  // --------------------- Backend IPC Handlers ---------------------
   ipcMain.handle('get-submissions', async (event, projectId) => {
     return new Promise((resolve, reject) => {
       getSubmissionsAndTestConfig(projectId, (err, rows) => {
@@ -56,6 +60,42 @@ app.whenReady().then(() => {
       });
     });
   });
+
+  ipcMain.handle('extract-and-save-submissions', async (event, submissionsDir, outputDir, projectId) => {
+    return new Promise((resolve, reject) => {
+      extractAndSaveSubmissions(submissionsDir, outputDir, projectId, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  });
+
+  ipcMain.handle('get-project-by-id', async (event, projectId) => {
+    return new Promise((resolve, reject) => {
+      getProjectById(projectId, (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+  });
+  
+  ipcMain.handle('compile-all-in-project', async (event, projectId) => {
+    return new Promise((resolve, reject) => {
+      compileAllInProject(projectId, (err, result) => {
+        if (err) reject(err);
+        else resolve(result);
+      });
+    });
+  });
+
+  ipcMain.handle('run-all-compiled-submissions', async (event, projectId) => {
+    return new Promise((resolve, reject) => {
+      runAllCompiledSubmissions(projectId, (err, result) => {
+        if (err) reject(err);
+        else resolve(result);
+      });
+    });
+  }
 
 
   app.on('activate', () => {
