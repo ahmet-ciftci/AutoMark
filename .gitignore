@@ -4,3 +4,4 @@ dist/
 frontend/dist/
 *.log
 .env
+.DS_Store

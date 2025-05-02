@@ -1,34 +1,99 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-
+import { useState, useEffect } from 'react'
+import MenuBar from './components/layout/MenuBar'
+import Sidebar from './components/layout/Sidebar'
+import MainContent from './components/layout/MainContent'
+import ConfigEditor from './components/views/ConfigEditor'
+import ProjectCreation from './components/views/ProjectCreation'
+import ReportsView from './components/views/ReportsView'
+import FileExplorer from './components/views/FileExplorer'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [activeView, setActiveView] = useState('project')
+  const [selectedLanguage, setSelectedLanguage] = useState('Java')
+  const [key, setKey] = useState(0) // For view transitions
+  
+  // Force dark mode
+  useEffect(() => {
+    document.documentElement.classList.add('dark-theme');
+    document.body.classList.add('dark-bg');
+  }, []);
+  
+  // Change view with animation
+  const switchView = (newView) => {
+    setActiveView(newView)
+    setKey(prev => prev + 1)
+  }
+  
+  // Menu handlers for opening project
+  const openNewProject = () => {
+    switchView('project')
+  }
+  
+  // Handler for the Edit button in ProjectCreation
+  const onEditLanguage = (lang) => {
+    setSelectedLanguage(lang)
+    switchView('config')
+  }
+
+  // Handler for project creation
+  const onCreateProject = (projectConfig) => {
+    switchView('reports')
+  }
+  
+  // Configuration handlers
+  const onCancelConfig = () => {
+    switchView('project')
+  }
+  
+  const onSaveConfig = (config) => {
+    switchView('project')
+  }
+
+  // Handle sidebar view changes
+  const handleViewChange = (view) => {
+    switchView(view)
+  }
+
+  // Render the appropriate view based on activeView state
+  const renderView = () => {
+    switch (activeView) {
+      case 'config':
+        return <ConfigEditor 
+                 selectedLanguage={selectedLanguage}
+                 onCancelConfig={onCancelConfig}
+                 onSaveConfig={onSaveConfig}
+               />
+      case 'project':
+        return <ProjectCreation 
+                 onEditLang={onEditLanguage}
+                 onCreateProject={onCreateProject}
+               />
+      case 'reports':
+        return <ReportsView />
+      case 'fileExplorer':
+        return <FileExplorer />
+      default:
+        return <ReportsView />
+    }
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div className="flex flex-col h-screen bg-[#121212] text-gray-200">
+      <MenuBar onNewProject={openNewProject} />
+      <div className="flex flex-1 overflow-hidden">
+        {activeView !== 'project' && activeView !== 'config' && (
+          <Sidebar 
+            activeView={activeView}
+            onViewChange={handleViewChange}
+          />
+        )}
+        <MainContent>
+          <div key={key} className="animate-fade-in h-full">
+            {renderView()}
+          </div>
+        </MainContent>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    </div>
   )
 }
 
