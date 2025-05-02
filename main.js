@@ -95,7 +95,7 @@ app.whenReady().then(() => {
         else resolve(result);
       });
     });
-  }
+  });
 
 
   app.on('activate', () => {
