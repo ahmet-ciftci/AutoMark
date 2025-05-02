@@ -404,7 +404,7 @@ input[type="checkbox"] {
   }
   
   .card {
-    @apply bg-dark-surface border border-dark-border rounded-lg overflow-hidden transition-shadow duration-200;
+    @apply bg-dark-surface border border-dark-border rounded-lg transition-shadow duration-200;
   }
 
   .card:hover {
