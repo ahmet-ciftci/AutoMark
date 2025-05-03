@@ -1,7 +1,10 @@
 const {
   getSubmissionsAndTestConfig,
   updateSubmissionStatus
-} = require("./Database"); 
+} = require("./Database");
+
+const fs = require("fs");
+const { exec } = require("child_process");
 
 /*
 Compares the actual output of executed submissions with the expected output.
@@ -42,7 +45,52 @@ function compareAllOutputs(projectId) {
           }
         });
            
-      } else {
+      }
+      
+      
+      else if (submission.output_method === "file") {
+        fs.readFile(submission.expected_output, 'utf-8', (err, expected) => {
+          if (err) {
+            console.error(`Error reading expected output file for ${submission.student_id}:`, err);
+            updateSubmissionStatus(submission.id, "skipped", () => {});
+            return;
+          }
+      
+          const matched = actual.trim() === expected.trim();
+          updateSubmissionStatus(submission.id, matched ? "success" : "failed", (err) => {
+            if (err) console.error("Error updating status:", err);
+            else console.log(
+              matched
+                ? `${submission.student_id} output matched (file).`
+                : `${submission.student_id} output mismatch (file).`
+            );
+          });
+        });
+      }
+      
+      else if (submission.output_method === "script") {
+        exec(submission.expected_output, { shell: true }, (err, stdout, stderr) => {
+          if (err) {
+            console.error(`Error executing expected output script for ${submission.student_id}:`, err);
+            updateSubmissionStatus(submission.id, "skipped", () => {});
+            return;
+          }
+      
+          const expected = stdout.trim();
+          const matched = actual.trim() === expected;
+      
+          updateSubmissionStatus(submission.id, matched ? "success" : "failed", (err) => {
+            if (err) console.error("Error updating status:", err);
+            else console.log(
+              matched
+                ? `${submission.student_id} output matched (script).`
+                : `${submission.student_id} output mismatch (script).`
+            );
+          });
+        });
+      }
+      
+      else {
         console.warn(`Unsupported output method for student ${submission.student_id}. Skipping.`);
         updateSubmissionStatus(submission.id, "skipped", (err) => {
           if (err) console.error("Error updating skipped status:", err);
