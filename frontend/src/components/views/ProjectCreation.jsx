@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { FaFolder, FaChevronDown, FaPencilAlt, FaFileImport, FaFileExport, FaPlus, FaCheck, FaTerminal, FaFileAlt, FaFileCode, FaKeyboard } from 'react-icons/fa'
 import ConfigEditor from './ConfigEditor';
 
-const ProjectCreation = ({onCreateProject, onNewLangConfig }) => {
+const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
   const [project_name, setProjectName] = useState('')
   const [submissions_directory, setSubmissionsDirectory] = useState('')
   const [selectedLanguage, setSelectedLanguage] = useState('')
@@ -31,8 +31,12 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig }) => {
   
   const handleEditLang = () => {
     if (!selectedLanguage) return;
-    setIsEditing(true);
+    // Call the parent handler instead of setting local state
+    if (onEditLang) {
+      onEditLang(selectedLanguage);
+    }
   };
+  
   
   const languageDropdownRef = useRef(null)
 
@@ -269,13 +273,6 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig }) => {
 
   return (
     <>
-    {isEditing && (
-      <ConfigEditor
-        selectedLanguage={selectedLanguage}
-        onCancelConfig={() => setIsEditing(false)}
-        onSaveConfig={onSaveConfig}
-      />
-    )}
 
     <div className="max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-8 text-gray-200">Create New Project</h1>
