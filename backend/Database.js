@@ -173,7 +173,7 @@ function addSubmission(projectId, studentId, status, path, errorMessage, actualO
   });
 }
 
-function getSubmissions(callback) {
+async function getSubmissions(callback) {
   const query = `SELECT * FROM Submissions`;
   db.all(query, [], (err, rows) => {
     callback(err, rows);
@@ -246,7 +246,7 @@ function submissionExists(projectId, studentId, callback) {
   });
 }
 
-function getProjectById(projectId, callback) {
+async function getProjectById(projectId, callback) {
   const query = `SELECT * FROM Projects WHERE id = ?`;
   db.get(query, [projectId], (err, row) => {
     callback(err, row);

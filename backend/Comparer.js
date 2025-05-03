@@ -8,7 +8,7 @@ Compares the actual output of executed submissions with the expected output.
 Updates the submission status to 'success' or 'failed' based on the result.
  */
 
-function compareAllOutputs(projectId) {
+async function compareAllOutputs(projectId) {
   getSubmissionsAndTestConfig(projectId, (err, submissions) => {
     if (err) {
       console.error("Error fetching submissions and test config:", err);

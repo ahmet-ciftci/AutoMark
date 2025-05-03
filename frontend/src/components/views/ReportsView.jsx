@@ -7,40 +7,52 @@ const ReportsView = ({projectId}) => {
   const [selectedReports, setSelectedReports] = useState([])
   const [hoveredOutputIndex, setHoveredOutputIndex] = useState(null)
   const [selectedSubmission, setSelectedSubmission] = useState(null)
-
   const [submissions, setSubmissions] = useState([])
   const [outputs, setOutputs] = useState([])
 
-  const [projectId, setProjectId] = useState(null);
   const [project, setProject] = useState(null)
+
   useEffect(() => {
-    // Fetch project details and submissions
-    window.electron.getProjectById(projectId).then(row => {
-      setProject(row)
-    })
-    // Extract and save submissions ---------- ADD THE OUTPUT PATHHHH  HERE
-    window.electron.extractAndSaveSubmissions(project.submissions_path, "", projectId).then(() => {})
-    // Compile submissions
-    window.electron.compileAllInProject(projectId).then(() => {})
-    // Run all submissions
-    window.electron.runAllSubmissions(projectId).then(() => {})
+    // Define an async function inside useEffect
+    const fetchData = async () => {
+      try {
+        // Fetch project details
+        const row = await window.electron.getProjectById(projectId);
+        setProject(row);
+        
+        // Extract and save submissions
+        // Note: Adding output path in second parameter that was empty before
+        await window.electron.extractAndSaveSubmissions(row.submissions_path, row.output_path || "", projectId);
+        
+        // Compile submissions
+        await window.electron.compileAllInProject(projectId);
+        
+        // Run all submissions
+        await window.electron.runAllCompiledSubmissions(projectId);
 
-
-    // Fetch submissions
-    window.electron.getSubmissions(projectId).then(rows => {
-      setSubmissions(rows)
-
-      const transformedOutputs = rows.map((row, idx) => ({
-        id: idx,
-        expected: true,
-        actual: true,
-        value: row.actual_output || '',
-        matching: row.actual_output === row.expected_output,
-      }))
-      setOutputs(transformedOutputs)
-    })
+        // Compare outputs
+        await window.electron.compareAllOutputs(projectId);
+        
+        // Fetch submissions
+        const rows = await window.electron.getSubmissions(projectId);
+        setSubmissions(rows);
+        
+        const transformedOutputs = rows.map((row, idx) => ({
+          id: idx,
+          expected: true,
+          actual: true,
+          value: row.actual_output || '',
+          matching: row.status === 'success'
+        }));
+        setOutputs(transformedOutputs);
+      } catch (error) {
+        console.error("Error fetching project data:", error);
+      }
+    };
     
-  }, [])
+    // Execute the async function
+    fetchData();
+  }, [projectId]);
 
   const handleReportSelection = (submissionId) => {
     setSelectedReports(prev =>

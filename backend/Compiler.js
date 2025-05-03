@@ -42,7 +42,7 @@ function compileSubmission(submission, config, callback) { //Compiles a single s
   });
 }
 
-function compileAllInProject(projectId, doneCallback) { //doneCallback =  called when a task finishes to notify the main function it's done.
+async function compileAllInProject(projectId, doneCallback) { //doneCallback =  called when a task finishes to notify the main function it's done.
   getSubmissionsAndTestConfig(projectId, (err, submissions) => { //pulls both Submissions and TestConfig tables along with projectId. 
     if (err || !submissions || submissions.length === 0) {
       if (doneCallback) doneCallback();

@@ -8,4 +8,5 @@ contextBridge.exposeInMainWorld('electron', {
   getProjectById: (projectId) => ipcRenderer.invoke('get-project-by-id', projectId),
   compileAllInProject: (projectId) => ipcRenderer.invoke('compile-all-in-project', projectId),
   runAllCompiledSubmissions: (projectId) => ipcRenderer.invoke('run-all-compiled-submissions', projectId),
+  compareAllOutputs: (projectId) => ipcRenderer.invoke('compare-all-outputs', projectId),
 });

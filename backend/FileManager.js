@@ -3,7 +3,7 @@ const path = require('path');
 const AdmZip = require('adm-zip');
 const { addSubmission, submissionExists } = require('./Database');
 
-function extractAndSaveSubmissions(submissionsDir, outputDir, projectId) {
+async function extractAndSaveSubmissions(submissionsDir, outputDir, projectId) {
   if (!fs.existsSync(submissionsDir)) {
     console.error('Submissions directory not found:', submissionsDir);
     return;

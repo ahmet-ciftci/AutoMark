@@ -3,8 +3,9 @@ const path = require('path');
 const { getSubmissionsAndTestConfig } = require('./backend/Database.js');
 const { extractAndSaveSubmissions } = require('./backend/FileManager.js');
 const { getProjectById } = require('./backend/Database.js');
-const { compileAllInProject } = require('./backend/Runner.js');
+const { compileAllInProject } = require('./backend/Compiler.js');
 const {runAllCompiledSubmissions} = require('./backend/Runner.js');
+const { compareAllOutputs } = require('./backend/Comparer.js');
 
 let mainWindow;
 
@@ -91,6 +92,15 @@ app.whenReady().then(() => {
   ipcMain.handle('run-all-compiled-submissions', async (event, projectId) => {
     return new Promise((resolve, reject) => {
       runAllCompiledSubmissions(projectId, (err, result) => {
+        if (err) reject(err);
+        else resolve(result);
+      });
+    });
+  });
+
+  ipcMain.handle('compare-all-outputs', async (event, projectId) => {
+    return new Promise((resolve, reject) => {
+      compareAllOutputs(projectId, (err, result) => {
         if (err) reject(err);
         else resolve(result);
       });

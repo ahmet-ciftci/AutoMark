@@ -18,7 +18,7 @@ Executes all compiled submissions for the given project.
 4. Once all executions are complete, notify main.js via doneCallback().
  */
 
-function runAllCompiledSubmissions(projectId, doneCallback) {
+async function runAllCompiledSubmissions(projectId, doneCallback) {
   getSubmissionsAndTestConfig(projectId, (err, submissions) => {
     if (err) {
       console.error("Error fetching submissions and test config:", err);
