@@ -51,13 +51,28 @@ function runAllCompiledSubmissions(projectId, doneCallback) {
           return;
         }
 
-        const executablePath = path.join(submission.path, "main");
+        const executablePath = path.join(submission.path, config.run_command);
 
         let args = [];
-
+        let child
         if (submission.input_method === "manual") {
           args = submission.input ? submission.input.trim().split(/\s+/) : [];
-        } else {
+          child = spawn(executablePath, args);
+        } 
+        else if (submission.input_method === "file") {
+          // Use shell option for file redirection
+          child = spawn(`${executablePath} < ${submission.input}`, {
+            shell: true
+          });
+        }
+        else if (submission.input_method === "script") {
+          // Use shell option for command substitution
+          child = spawn(`${executablePath} $(${submission.input})`, {
+            shell: true
+          });
+        }
+   
+        else {
           console.warn(`Unsupported input method for student ${submission.student_id}`);
           updateSubmissionStatus(submission.id, "skipped", (err) => {
             if (err) console.error("Error updating skipped submission:", err);
@@ -66,7 +81,6 @@ function runAllCompiledSubmissions(projectId, doneCallback) {
           return;
         }
 
-        const child = spawn(executablePath, args); //The student's program starts here.
 
         let output = "";
         let errorOutput = "";
