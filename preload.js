@@ -15,4 +15,5 @@ contextBridge.exposeInMainWorld('electron', {
   runSubmissions: (projectId) => ipcRenderer.invoke('run-submissions', projectId),
   compareOutputs: (projectId) => ipcRenderer.invoke('compare-outputs', projectId),
   getProjectById: (projectId) => ipcRenderer.invoke('get-project-by-id', projectId),
+  getTestConfigByProjectId: (projectId) => ipcRenderer.invoke('get-test-config-by-project-id', projectId),
 });

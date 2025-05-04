@@ -8,25 +8,37 @@ const ReportsView = ({projectId}) => {
   const [hoveredOutputIndex, setHoveredOutputIndex] = useState(null)
   const [selectedSubmission, setSelectedSubmission] = useState(null)
   const [submissions, setSubmissions] = useState([])
-  const [outputs, setOutputs] = useState([])
-
+  const [expectedOutput, setExpectedOutput] = useState([])
+  const [studentOutput, setStudentOutput] = useState([])
+  const [currentMatches, setCurrentMatches] = useState(0)
+  const [currentTotal, setCurrentTotal] = useState(0)
 
   useEffect(() => {
     // Define an async function inside useEffect
     const fetchData = async () => {
       try {
-        // Fetch submissions
+        if (!projectId) return;
+        
+        // Fetch submissions and expected output
         const rows = await window.electron.getSubmissions(projectId);
         setSubmissions(rows);
         
-        const transformedOutputs = rows.map((row, idx) => ({
-          id: idx,
-          expected: true,
-          actual: true,
-          value: row.actual_output || '',
-          matching: row.status === 'success'
-        }));
-        setOutputs(transformedOutputs);
+        // Get test configuration to retrieve the expected output
+        const testConfig = await window.electron.getTestConfigByProjectId(projectId);
+        if (testConfig && testConfig.expected_output) {
+          // Split expected output by line and format for display
+          const expected = testConfig.expected_output.split('\n').map((line, idx) => ({
+            id: idx,
+            value: line.trim()
+          }));
+          setExpectedOutput(expected);
+        }
+        
+        // Select the first submission by default if available
+        if (rows.length > 0) {
+          setSelectedSubmission(rows[0].submission_id);
+          updateStudentOutput(rows[0]);
+        }
       } catch (error) {
         console.error("Error fetching project data:", error);
       }
@@ -35,6 +47,44 @@ const ReportsView = ({projectId}) => {
     // Execute the async function
     fetchData();
   }, [projectId]);
+
+  // Update displayed output when a student submission is selected
+  useEffect(() => {
+    if (selectedSubmission && submissions.length > 0) {
+      const selectedStudent = submissions.find(s => s.submission_id === selectedSubmission);
+      if (selectedStudent) {
+        updateStudentOutput(selectedStudent);
+      }
+    }
+  }, [selectedSubmission, submissions]);
+
+  // Helper function to update student output display
+  const updateStudentOutput = (student) => {
+    if (!student || !student.actual_output) {
+      setStudentOutput([]);
+      setCurrentMatches(0);
+      setCurrentTotal(0);
+      return;
+    }
+    
+    // Split student output by line and format for display
+    const output = student.actual_output.split('\n').map((line, idx) => {
+      const expectedLine = idx < expectedOutput.length ? expectedOutput[idx].value : '';
+      const isMatching = line.trim() === expectedLine;
+      return {
+        id: idx,
+        value: line.trim(),
+        matching: isMatching
+      };
+    });
+    
+    setStudentOutput(output);
+    
+    // Calculate matching lines
+    const matches = output.filter(o => o.matching).length;
+    setCurrentMatches(matches);
+    setCurrentTotal(output.length);
+  };
 
   const handleReportSelection = (submissionId) => {
     setSelectedReports(prev =>
@@ -124,7 +174,9 @@ const ReportsView = ({projectId}) => {
                 onClick={() => setSelectedSubmission(sub.submission_id)}
               >
                 <span>Student {sub.student_id}</span>
-                <span>{sub.status}</span>
+                <span className={getScoreColorClass(sub.score || 0)}>
+                  {sub.score ? `${sub.score}%` : 'N/A'}
+                </span>
               </div>
             ))}
           </div>
@@ -134,47 +186,46 @@ const ReportsView = ({projectId}) => {
         <div className="card">
           <div className="card-header justify-center">Expected Output</div>
           <div className="p-4 flex flex-col items-center">
-            {outputs
-              .filter(o => o.expected)
-              .map((o, idx) => (
-                <div
-                  key={idx}
-                  onMouseEnter={() => setHoveredOutputIndex(idx)}
-                  onMouseLeave={() => setHoveredOutputIndex(null)}
-                  className={`py-2 px-4 m-1 font-mono rounded w-full text-center relative border ${
-                    hoveredOutputIndex === idx ? 'bg-dark-hover border-dark-hover' : 'border-transparent'
-                  }`}
-                >
-                  <span className="absolute left-2 text-xs text-gray-500">{idx + 1}</span>
-                  {o.value}
-                </div>
-              ))}
+            {expectedOutput.map((o, idx) => (
+              <div
+                key={idx}
+                onMouseEnter={() => setHoveredOutputIndex(idx)}
+                onMouseLeave={() => setHoveredOutputIndex(null)}
+                className={`py-2 px-4 m-1 font-mono rounded w-full text-center relative border ${
+                  hoveredOutputIndex === idx ? 'bg-dark-hover border-dark-hover' : 'border-transparent'
+                }`}
+              >
+                <span className="absolute left-2 text-xs text-gray-500">{idx + 1}</span>
+                {o.value}
+              </div>
+            ))}
           </div>
         </div>
   
         {/* Actual Output */}
         <div className="card">
-          <div className="card-header justify-center">Output</div>
+          <div className="card-header justify-center">Student Output</div>
           <div className="p-4 flex flex-col items-center">
-            {outputs
-              .filter(o => o.actual)
-              .map((o, idx) => (
-                <div
-                  key={idx}
-                  onMouseEnter={() => setHoveredOutputIndex(idx)}
-                  onMouseLeave={() => setHoveredOutputIndex(null)}
-                  className={`py-2 px-4 m-1 font-mono rounded w-full text-center relative border ${
-                    hoveredOutputIndex === idx
-                      ? 'bg-dark-hover border-dark-hover'
-                      : o.matching
-                      ? 'border-transparent'
-                      : 'bg-error-700/20 text-error-100 border-error-700/30'
-                  }`}
-                >
-                  <span className="absolute left-2 text-xs text-gray-500">{idx + 1}</span>
-                  {o.value}
-                </div>
-              ))}
+            {studentOutput.map((o, idx) => (
+              <div
+                key={idx}
+                onMouseEnter={() => setHoveredOutputIndex(idx)}
+                onMouseLeave={() => setHoveredOutputIndex(null)}
+                className={`py-2 px-4 m-1 font-mono rounded w-full text-center relative border ${
+                  hoveredOutputIndex === idx
+                    ? 'bg-dark-hover border-dark-hover'
+                    : o.matching
+                    ? 'border-transparent'
+                    : 'bg-error-700/20 text-error-100 border-error-700/30'
+                }`}
+              >
+                <span className="absolute left-2 text-xs text-gray-500">{idx + 1}</span>
+                {o.value}
+              </div>
+            ))}
+            {studentOutput.length === 0 && (
+              <div className="text-gray-400 italic p-4">No output available</div>
+            )}
           </div>
         </div>
       </div>
@@ -185,14 +236,14 @@ const ReportsView = ({projectId}) => {
           <div>
             <span className="text-gray-400">Matches:</span>
             <span className="ml-2 text-white font-medium">
-              {outputs.filter(o => o.matching).length}/{outputs.length}
+              {currentMatches}/{currentTotal}
             </span>
           </div>
           <div>
             <span className="text-gray-400">Score:</span>
             <span className="ml-2 text-white">
-              {outputs.length > 0
-                ? Math.round((outputs.filter(o => o.matching).length / outputs.length) * 100) + '%'
+              {currentTotal > 0
+                ? Math.round((currentMatches / currentTotal) * 100) + '%'
                 : '0%'}
             </span>
           </div>
@@ -200,7 +251,6 @@ const ReportsView = ({projectId}) => {
       </div>
     </div>
   )
-  
 }
 
 export default ReportsView

@@ -41,17 +41,20 @@ function App() {
     switchView('config');
   };
   // Handler for project creation
+  const [projectId, setProjectId] = useState(null);
   const onCreateProject = async ({ project, testConfig }) => {
     try {
-      const projectId = await window.electron.addProject(project);
-      await window.electron.addTestConfig(projectId, testConfig);
-      await window.electron.extractSubmissions(projectId, project.submissions_path);
-      await window.electron.compileSubmissions(projectId);
-      await window.electron.runSubmissions(projectId);
-      await window.electron.compareOutputs(projectId);
+      const newProjectId = await window.electron.addProject(project);
+      setProjectId(newProjectId); // Use setState instead of assignment
+      
+      await window.electron.addTestConfig(newProjectId, testConfig);
+      await window.electron.extractSubmissions(newProjectId, project.submissions_path);
+      await window.electron.compileSubmissions(newProjectId);
+      await window.electron.runSubmissions(newProjectId);
+      await window.electron.compareOutputs(newProjectId);
   
       console.log("Project Handled.");
-      setProjectId(project.id);
+      console.log("Project ID:", newProjectId);
       switchView('reports');
   
     } catch (err) {
@@ -59,7 +62,6 @@ function App() {
       alert("An error occured: " + err.message);
     }
   };
-  
   
   // Configuration handlers
   const onCancelConfig = () => {

@@ -223,6 +223,15 @@ app.whenReady().then(() => {
     });
   });
 
+  ipcMain.handle('get-test-config-by-project-id', async (event, projectId) => {
+    return new Promise((resolve, reject) => {
+      db.getTestConfigByProjectId(projectId, (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+  });
+
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

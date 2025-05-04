@@ -266,7 +266,12 @@ async function getProjectById(projectId, callback) {
     callback(err, row);
   });
 }
-
+function getTestConfigByProjectId(projectId, callback) {
+  const query = `SELECT * FROM TestConfig WHERE project_id = ?`;
+  db.get(query, [projectId], (err, row) => {
+    callback(err, row);
+  });
+}
 
 
 
@@ -295,6 +300,6 @@ module.exports = {
   closeDatabase,
   submissionExists,
   getConfigurationByName,
-
   getProjectById,
+  getTestConfigByProjectId,
 };
