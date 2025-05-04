@@ -16,7 +16,7 @@ Updates submission status based on compilation result.
 */
 
 function compileSubmission(submission, config, callback) { //Compiles a single student
-  const sourcePath = path.join(submission.path, config.source_code);
+  const sourcePath = path.join(submission.path, submission.student_id, config.source_code);
   const outputPath = path.join(submission.path, "main");
 
   if (!fs.existsSync(sourcePath)) {

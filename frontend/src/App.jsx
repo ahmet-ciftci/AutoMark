@@ -40,11 +40,25 @@ function App() {
     setSelectedLanguage(null); // Set language to null to indicate a new config
     switchView('config');
   };
-
   // Handler for project creation
-  const onCreateProject = (projectConfig) => {
-    switchView('reports')
-  }
+  const onCreateProject = async ({ project, testConfig }) => {
+    try {
+      const projectId = await window.electron.addProject(project);
+      await window.electron.addTestConfig(projectId, testConfig);
+      await window.electron.extractSubmissions(projectId, project.submissions_path);
+      await window.electron.compileSubmissions(projectId);
+      await window.electron.runSubmissions(projectId);
+      await window.electron.compareOutputs(projectId);
+  
+      console.log("Project Handled.");
+      switchView('reports');
+  
+    } catch (err) {
+      console.error("Error while project creation:", err);
+      alert("An error occured: " + err.message);
+    }
+  };
+  
   
   // Configuration handlers
   const onCancelConfig = () => {

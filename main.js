@@ -2,6 +2,11 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const db = require('./backend/Database');
 const { getSubmissionsAndTestConfig } = require('./backend/Database.js');
+const { extractAndSaveSubmissions } = require('./backend/FileManager');
+const { compileAllInProject } = require('./backend/Compiler');
+const { runAllCompiledSubmissions } = require('./backend/Runner');
+const { compareAllOutputs } = require('./backend/Comparer');
+
 let mainWindow;
 
 function createWindow() {
@@ -111,7 +116,70 @@ app.whenReady().then(() => {
       );
     });
   });
+
+  ipcMain.handle('add-project', async (event, project) => {
+    return new Promise((resolve, reject) => {
+      db.addProject(project.name, project.config_id, project.submissions_path, (err, id) => {
+        if (err) reject(err);
+        else resolve(id);
+      });
+    });
+  });
+
+  ipcMain.handle('add-test-config', async (event, projectId, config) => {
+    return new Promise((resolve, reject) => {
+      db.addTestConfig(
+        projectId,
+        config.input_method,
+        config.input,
+        config.output_method,
+        config.expected_output,
+        (err, id) => {
+          if (err) reject(err);
+          else resolve(id);
+        }
+      );
+    });
+  });
+
+  //outputpathi sabit gir şimdilik
+  ipcMain.handle('extract-submissions', async (event, projectId, submissionsPath) => {
+    try {
+      const outputPath = path.join(submissionsPath, '..', 'output');
+      await extractAndSaveSubmissions(submissionsPath, outputPath, projectId);
+      return 'Extraction complete.';
+    } catch (err) {
+      throw err;
+    }
+  });
   
+  // Handle compilation of submissions
+  ipcMain.handle('compile-submissions', async (event, projectId) => {
+    return new Promise((resolve, reject) => {
+      compileAllInProject(projectId, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  });
+  // Handle execution of submissions
+  ipcMain.handle('run-submissions', async (event, projectId) => {
+    return new Promise((resolve, reject) => {
+      runAllCompiledSubmissions(projectId, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  });
+  // Handle output comparison
+  ipcMain.handle('compare-outputs', async (event, projectId) => {
+    return new Promise((resolve, reject) => {
+      compareAllOutputs(projectId, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  });
 
 
   app.on('activate', () => {
