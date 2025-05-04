@@ -6,95 +6,69 @@ const {
 const fs = require("fs");
 const { exec } = require("child_process");
 
-/*
-Compares the actual output of executed submissions with the expected output.
-Updates the submission status to 'success' or 'failed' based on the result.
- */
-
-function compareAllOutputs(projectId) {
+function compareAllOutputs(projectId, doneCallback) {
   getSubmissionsAndTestConfig(projectId, (err, submissions) => {
     if (err) {
       console.error("Error fetching submissions and test config:", err);
-      return;
+      return doneCallback?.(err);
     }
 
     if (!submissions || submissions.length === 0) {
       console.log("No submissions found.");
-      return;
+      return doneCallback?.();
     }
 
-    // For each submission, compare actual and expected output.
-    submissions.forEach((submission) => {
-      if (submission.status !== "executed") return;
+    let executedSubs = submissions.filter(s => s.status === "executed");
+    let remaining = executedSubs.length;
 
+    if (remaining === 0) {
+      console.log("No executed submissions to compare.");
+      return doneCallback?.();
+    }
+
+    executedSubs.forEach((submission) => {
+      const submissionId = submission.submission_id || submission.id;
       const actual = submission.actual_output?.trim();
-      const expected = submission.expected_output?.trim();
+
+      const finish = (status) => {
+        updateSubmissionStatus(submissionId, status, (err) => {
+          if (err) console.error("Error updating status:", err);
+          if (--remaining === 0 && doneCallback) doneCallback();
+        });
+      };
 
       if (submission.output_method === "manual") {
+        const expected = submission.expected_output?.trim();
         const matched = actual === expected;
+        console.log(`${submission.student_id}: manual comparison ${matched ? 'matched' : 'failed'}`);
+        finish(matched ? "success" : "failed");
 
-        updateSubmissionStatus(submission.id, matched ? "success" : "failed", (err) => {
+      } else if (submission.output_method === "file") {
+        fs.readFile(submission.expected_output, "utf-8", (err, expected) => {
           if (err) {
-            console.error("Error updating submission status:", err);
-          } else {
-            console.log(
-              matched
-                ? ` ${submission.student_id} output matched.`
-                : ` ${submission.student_id} output mismatch.`
-            );
+            console.error(`Error reading file for ${submission.student_id}:`, err);
+            return finish("skipped");
           }
+          const matched = actual === expected.trim();
+          console.log(`${submission.student_id}: file comparison ${matched ? 'matched' : 'failed'}`);
+          finish(matched ? "success" : "failed");
         });
-           
-      }
-      
-      
-      else if (submission.output_method === "file") {
-        fs.readFile(submission.expected_output, 'utf-8', (err, expected) => {
+
+      } else if (submission.output_method === "script") {
+        exec(submission.expected_output, { shell: true }, (err, stdout) => {
           if (err) {
-            console.error(`Error reading expected output file for ${submission.student_id}:`, err);
-            updateSubmissionStatus(submission.id, "skipped", () => {});
-            return;
+            console.error(`Error running script for ${submission.student_id}:`, err);
+            return finish("skipped");
           }
-      
-          const matched = actual.trim() === expected.trim();
-          updateSubmissionStatus(submission.id, matched ? "success" : "failed", (err) => {
-            if (err) console.error("Error updating status:", err);
-            else console.log(
-              matched
-                ? `${submission.student_id} output matched (file).`
-                : `${submission.student_id} output mismatch (file).`
-            );
-          });
-        });
-      }
-      
-      else if (submission.output_method === "script") {
-        exec(submission.expected_output, { shell: true }, (err, stdout, stderr) => {
-          if (err) {
-            console.error(`Error executing expected output script for ${submission.student_id}:`, err);
-            updateSubmissionStatus(submission.id, "skipped", () => {});
-            return;
-          }
-      
           const expected = stdout.trim();
-          const matched = actual.trim() === expected;
-      
-          updateSubmissionStatus(submission.id, matched ? "success" : "failed", (err) => {
-            if (err) console.error("Error updating status:", err);
-            else console.log(
-              matched
-                ? `${submission.student_id} output matched (script).`
-                : `${submission.student_id} output mismatch (script).`
-            );
-          });
+          const matched = actual === expected;
+          console.log(`${submission.student_id}: script comparison ${matched ? 'matched' : 'failed'}`);
+          finish(matched ? "success" : "failed");
         });
-      }
-      
-      else {
-        console.warn(`Unsupported output method for student ${submission.student_id}. Skipping.`);
-        updateSubmissionStatus(submission.id, "skipped", (err) => {
-          if (err) console.error("Error updating skipped status:", err);
-        });
+
+      } else {
+        console.warn(`Unsupported method for ${submission.student_id}`);
+        finish("skipped");
       }
     });
   });

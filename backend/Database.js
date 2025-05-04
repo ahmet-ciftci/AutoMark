@@ -13,15 +13,6 @@ function initializeDatabase() {
     fs.mkdirSync(documentsPath);
   }
 
-  const db = new sqlite3.Database(dbPath, (err) => {
-    if (err) {
-      console.error("Failed to connect to database:", err.message);
-      return;
-    }
-
-    console.log("Database connected at:", dbPath);
-  });
-
   db.serialize(() => {
     // Create Projects table
     db.run(`CREATE TABLE IF NOT EXISTS Projects (
@@ -68,13 +59,7 @@ function initializeDatabase() {
     console.log("All tables ensured (created if not exist).");
   });
 
-  db.close((err) => {
-    if (err) {
-      console.error("Error closing database:", err.message);
-    } else {
-      console.log("Database connection closed.");
-    }
-  });
+
 }
 
 
@@ -220,13 +205,26 @@ function getConfigurationByProjectId(projectId, callback) {
 }
 
 function getSubmissionsAndTestConfig(projectId, callback) {
-  const query = `SELECT s.*, tc.* FROM Submissions s
-                 JOIN TestConfig tc ON s.project_id = tc.project_id
-                 WHERE s.project_id = ?`;
-  db.all(query, [projectId], (err, rows) => {
-    callback(err, rows);
-  });
+  const query = `
+    SELECT 
+      s.id AS submission_id,
+      s.project_id,
+      s.student_id,
+      s.status,
+      s.path,
+      s.error_message,
+      s.actual_output,
+      tc.input_method,
+      tc.input,
+      tc.output_method,
+      tc.expected_output
+    FROM Submissions s
+    JOIN TestConfig tc ON s.project_id = tc.project_id
+    WHERE s.project_id = ?`;
+
+  db.all(query, [projectId], callback);
 }
+
 
 function updateActualOutput(id, actualOutput, callback) {
   const query = `UPDATE Submissions SET actual_output = ? WHERE id = ?`;
