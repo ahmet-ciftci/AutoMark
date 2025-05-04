@@ -101,6 +101,7 @@ const ReportsView = ({projectId}) => {
   }
 
   const getScoreColorClass = (score) => {
+    if (score === undefined || score === null) return 'text-gray-400';
     const s = parseFloat(score)
     if (s >= 70) return 'text-green-500'
     if (s >= 50) return 'text-yellow-400'
@@ -174,8 +175,8 @@ const ReportsView = ({projectId}) => {
                 onClick={() => setSelectedSubmission(sub.submission_id)}
               >
                 <span>Student {sub.student_id}</span>
-                <span className={getScoreColorClass(sub.score || 0)}>
-                  {sub.score ? `${sub.score}%` : 'N/A'}
+                <span className={getScoreColorClass(sub.score)}>
+                  {sub.score ? `${sub.score}%` : sub.status || 'Pending'}
                 </span>
               </div>
             ))}
@@ -215,7 +216,7 @@ const ReportsView = ({projectId}) => {
                   hoveredOutputIndex === idx
                     ? 'bg-dark-hover border-dark-hover'
                     : o.matching
-                    ? 'border-transparent'
+                    ? 'border-green-500/30 bg-green-500/10'
                     : 'bg-error-700/20 text-error-100 border-error-700/30'
                 }`}
               >
@@ -235,13 +236,17 @@ const ReportsView = ({projectId}) => {
         <div className="flex justify-end space-x-6">
           <div>
             <span className="text-gray-400">Matches:</span>
-            <span className="ml-2 text-white font-medium">
+            <span className={`ml-2 font-medium ${currentMatches === currentTotal && currentTotal > 0 ? 'text-green-500' : 'text-white'}`}>
               {currentMatches}/{currentTotal}
             </span>
           </div>
           <div>
             <span className="text-gray-400">Score:</span>
-            <span className="ml-2 text-white">
+            <span className={`ml-2 ${
+              currentTotal > 0 && Math.round((currentMatches / currentTotal) * 100) >= 70 
+                ? 'text-green-500' 
+                : 'text-white'
+            }`}>
               {currentTotal > 0
                 ? Math.round((currentMatches / currentTotal) * 100) + '%'
                 : '0%'}
