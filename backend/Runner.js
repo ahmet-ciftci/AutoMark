@@ -49,8 +49,9 @@ function runAllCompiledSubmissions(projectId, doneCallback) {
           if (submission.input_method === "manual") {
             inputData = submission.input?.trim() || "";
           } else if (submission.input_method === "file") {
-            const inputPath = path.join(submission.path, submission.input);
-            inputData = fs.readFileSync(inputPath, "utf-8");
+            const inputPath = submission.input?.trim() || "";
+            inputData = fs.readFileSync(inputPath, "utf-8").trim();
+            args.push(...inputData.split(/\s+/));
           } else if (submission.input_method === "script") {
             inputData = execSync(submission.input, { cwd: submission.path, shell: true }).toString();
           } else {

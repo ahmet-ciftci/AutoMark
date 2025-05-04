@@ -38,33 +38,12 @@ function compareAllOutputs(projectId, doneCallback) {
       };
 
       if (submission.output_method === "manual") {
-        const expected = submission.expected_output?.trim();
-        const matched = actual === expected;
+        const normalizeLineEndings = (str) => str.replace(/\r\n/g, "\n");
+        const expected = normalizeLineEndings(submission.expected_output?.trim());
+        const actualNormalized = normalizeLineEndings(actual);
+        const matched = actualNormalized === expected;
         console.log(`${submission.student_id}: manual comparison ${matched ? 'matched' : 'failed'}`);
         finish(matched ? "success" : "failed");
-
-      } else if (submission.output_method === "file") {
-        fs.readFile(submission.expected_output, "utf-8", (err, expected) => {
-          if (err) {
-            console.error(`Error reading file for ${submission.student_id}:`, err);
-            return finish("skipped");
-          }
-          const matched = actual === expected.trim();
-          console.log(`${submission.student_id}: file comparison ${matched ? 'matched' : 'failed'}`);
-          finish(matched ? "success" : "failed");
-        });
-
-      } else if (submission.output_method === "script") {
-        exec(submission.expected_output, { shell: true }, (err, stdout) => {
-          if (err) {
-            console.error(`Error running script for ${submission.student_id}:`, err);
-            return finish("skipped");
-          }
-          const expected = stdout.trim();
-          const matched = actual === expected;
-          console.log(`${submission.student_id}: script comparison ${matched ? 'matched' : 'failed'}`);
-          finish(matched ? "success" : "failed");
-        });
 
       } else {
         console.warn(`Unsupported method for ${submission.student_id}`);

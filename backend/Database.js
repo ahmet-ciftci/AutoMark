@@ -133,6 +133,25 @@ function deleteConfiguration(id, callback) {
 
 // TestConfig Table Methods
 function addTestConfig(projectId, inputMethod, input, outputMethod, expectedOutput, callback) {
+  if (outputMethod === "file" && expectedOutput) {
+    try {
+      // Read the file content if the output method is "file"
+      expectedOutput = fs.readFileSync(expectedOutput, "utf-8").trim();
+    } catch (err) {
+      console.error(`Error reading expected output file:`, err);
+      return callback(err);
+    }
+  } else if (outputMethod === "script" && expectedOutput) {
+    try {
+      // Execute the script and capture its output
+      const scriptOutput = require("child_process").execSync(expectedOutput, { shell: true }).toString().trim();
+      expectedOutput = scriptOutput;
+    } catch (err) {
+      console.error(`Error executing expected output script:`, err);
+      return callback(err);
+    }
+  }
+
   const query = `INSERT INTO TestConfig (project_id, input_method, input, output_method, expected_output) VALUES (?, ?, ?, ?, ?)`;
   db.run(query, [projectId, inputMethod, input, outputMethod, expectedOutput], function (err) {
     callback(err, this.lastID);
