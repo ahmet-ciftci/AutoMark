@@ -48,6 +48,7 @@ function runAllCompiledSubmissions(projectId, doneCallback) {
         try {
           if (submission.input_method === "manual") {
             inputData = submission.input?.trim() || "";
+            args.push(...inputData.split(/\s+/));
           } else if (submission.input_method === "file") {
             const inputPath = submission.input?.trim() || "";
             inputData = fs.readFileSync(inputPath, "utf-8").trim();
