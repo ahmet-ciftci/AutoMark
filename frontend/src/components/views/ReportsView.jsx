@@ -10,29 +10,11 @@ const ReportsView = ({projectId}) => {
   const [submissions, setSubmissions] = useState([])
   const [outputs, setOutputs] = useState([])
 
-  const [project, setProject] = useState(null)
 
   useEffect(() => {
     // Define an async function inside useEffect
     const fetchData = async () => {
       try {
-        // Fetch project details
-        const row = await window.electron.getProjectById(projectId);
-        setProject(row);
-        
-        // Extract and save submissions
-        // Note: Adding output path in second parameter that was empty before
-        await window.electron.extractAndSaveSubmissions(row.submissions_path, row.output_path || "", projectId);
-        
-        // Compile submissions
-        await window.electron.compileAllInProject(projectId);
-        
-        // Run all submissions
-        await window.electron.runAllCompiledSubmissions(projectId);
-
-        // Compare outputs
-        await window.electron.compareAllOutputs(projectId);
-        
         // Fetch submissions
         const rows = await window.electron.getSubmissions(projectId);
         setSubmissions(rows);
