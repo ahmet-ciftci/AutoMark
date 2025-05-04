@@ -235,6 +235,16 @@ app.whenReady().then(() => {
     });
   });
 
+  // Delete a configuration by id
+  ipcMain.handle('delete-config', async (event, config) => {
+    return new Promise((resolve, reject) => {
+      db.deleteConfiguration(config, (err, changes) => {
+        if (err) reject(err)
+        else resolve(changes)
+      })
+    })
+  });
+
   //FOR OPEN PROJECT MODAL
   ipcMain.handle('get-all-projects', async () => {
     return new Promise((resolve, reject) => {

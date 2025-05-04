@@ -17,4 +17,5 @@ contextBridge.exposeInMainWorld('electron', {
   getProjectById: (projectId) => ipcRenderer.invoke('get-project-by-id', projectId),
   getTestConfigByProjectId: (projectId) => ipcRenderer.invoke('get-test-config-by-project-id', projectId),
   getAllProjects: () => ipcRenderer.invoke('get-all-projects'),
+  deleteConfig: (config) => ipcRenderer.invoke('delete-config', config),
 });

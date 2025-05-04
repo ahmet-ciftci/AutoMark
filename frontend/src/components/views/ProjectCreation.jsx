@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { FaFolder, FaChevronDown, FaPencilAlt, FaFileImport, FaFileExport, FaPlus, FaCheck, FaTerminal, FaFileAlt, FaFileCode, FaKeyboard } from 'react-icons/fa'
+import { FaFolder, FaChevronDown, FaPencilAlt, FaFileImport, FaFileExport, FaPlus, FaCheck, FaTerminal, FaFileAlt, FaFileCode, FaKeyboard, FaTrash } from 'react-icons/fa'
 import ConfigEditor from './ConfigEditor';
 
 const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
@@ -37,6 +37,21 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
     }
   };
   
+  const handleDeleteConfig = async () => {
+    if (!selectedConfigId) return
+    if (!window.confirm('Delete this configuration?')) return
+    try {
+      await window.electron.deleteConfig(selectedConfigId)
+      // refresh list and clear selection
+      const configs = await window.electron.getConfigurations()
+      setConfigurations(configs)
+      setSelectedLanguage('')
+      setSelectedConfigId(null)
+      setShowLanguages(false)
+    } catch (err) {
+      console.error('Failed to delete config:', err)
+    }
+  };
   
   const languageDropdownRef = useRef(null)
 
@@ -378,6 +393,15 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
                   >
                     <FaPencilAlt className="mr-2 text-xs" />
                     Edit
+                  </button>
+
+                  <button
+                    onClick={handleDeleteConfig}
+                    className="btn-outline hover:border-error-500 hover:bg-error-700/20 hover:text-error-400"
+                    title="Delete configuration"
+                    disabled={!selectedLanguage}
+                  >
+                    <FaTrash className="mr-2 text-xs" /> Delete
                   </button>
 
                   <button
