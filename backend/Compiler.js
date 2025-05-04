@@ -15,8 +15,8 @@ Compiles each submission using its config and test setup.
 Updates submission status based on compilation result.
 */
 
-function compileSubmission(submission, config, callback) { //Compiles a single student
-  const sourcePath = path.join(submission.path, submission.student_id, config.source_code);
+async function compileSubmission(submission, config, callback) { //Compiles a single student
+  const sourcePath = path.join(submission.path, config.source_code);
   const outputPath = path.join(submission.path, "main");
 
   if (!fs.existsSync(sourcePath)) {
@@ -27,7 +27,6 @@ function compileSubmission(submission, config, callback) { //Compiles a single s
   }
 
   const compileCmd = `${config.compile_command} ${sourcePath} ${config.compile_parameters} -o ${outputPath}`;
-  
   exec(compileCmd, (error, stdout, stderr) => {
     if (error) {
       return callback({
@@ -55,13 +54,13 @@ function compileAllInProject(projectId, doneCallback) { //doneCallback =  called
       const projectId = submission.project_id;
 
       //Bring the Config settings of the project that each submission is connected to. (gcc or clang, which .c file, which parameter, etc.)
-      getConfigurationByProjectId(projectId, (err, config) => { 
+      getConfigurationByProjectId(projectId, async (err, config) => { 
         if (err || !config) {
           if (--remaining === 0 && doneCallback) doneCallback();
           return;
         }
         //compiles the file with gcc according to the config settings.
-        compileSubmission(submission, config, (result) => { 
+        await compileSubmission(submission, config, (result) => { 
           if (result.success) {
             console.log(`${submission.student_id} compiled successfully.`);
             updateSubmissionStatus(submission.id, "compiled", (err) => {
