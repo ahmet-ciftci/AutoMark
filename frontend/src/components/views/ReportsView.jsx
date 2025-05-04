@@ -1,31 +1,40 @@
 import { useState, useEffect } from 'react'
 import { FaFilePdf, FaFileCsv, FaFileCode, FaDownload, FaTimes, FaCheck } from 'react-icons/fa'
 
-const ReportsView = () => {
+const ReportsView = ({projectId}) => {
   const [showExportOptions, setShowExportOptions] = useState(false)
   const [showExportSelection, setShowExportSelection] = useState(false)
   const [selectedReports, setSelectedReports] = useState([])
   const [hoveredOutputIndex, setHoveredOutputIndex] = useState(null)
   const [selectedSubmission, setSelectedSubmission] = useState(null)
-
   const [submissions, setSubmissions] = useState([])
   const [outputs, setOutputs] = useState([])
 
-  useEffect(() => {
-    const projectId = 101
-    window.electron.getSubmissions(projectId).then(rows => {
-      setSubmissions(rows)
 
-      const transformedOutputs = rows.map((row, idx) => ({
-        id: idx,
-        expected: true,
-        actual: true,
-        value: row.actual_output || '',
-        matching: row.actual_output === row.expected_output,
-      }))
-      setOutputs(transformedOutputs)
-    })
-  }, [])
+  useEffect(() => {
+    // Define an async function inside useEffect
+    const fetchData = async () => {
+      try {
+        // Fetch submissions
+        const rows = await window.electron.getSubmissions(projectId);
+        setSubmissions(rows);
+        
+        const transformedOutputs = rows.map((row, idx) => ({
+          id: idx,
+          expected: true,
+          actual: true,
+          value: row.actual_output || '',
+          matching: row.status === 'success'
+        }));
+        setOutputs(transformedOutputs);
+      } catch (error) {
+        console.error("Error fetching project data:", error);
+      }
+    };
+    
+    // Execute the async function
+    fetchData();
+  }, [projectId]);
 
   const handleReportSelection = (submissionId) => {
     setSelectedReports(prev =>

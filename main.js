@@ -2,10 +2,11 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const db = require('./backend/Database');
 const { getSubmissionsAndTestConfig } = require('./backend/Database.js');
-const { extractAndSaveSubmissions } = require('./backend/FileManager');
-const { compileAllInProject } = require('./backend/Compiler');
-const { runAllCompiledSubmissions } = require('./backend/Runner');
-const { compareAllOutputs } = require('./backend/Comparer');
+const { extractAndSaveSubmissions } = require('./backend/FileManager.js');
+const { getProjectById } = require('./backend/Database.js');
+const { compileAllInProject } = require('./backend/Compiler.js');
+const {runAllCompiledSubmissions} = require('./backend/Runner.js');
+const { compareAllOutputs } = require('./backend/Comparer.js');
 
 let mainWindow;
 
@@ -22,7 +23,6 @@ function createWindow() {
       sandbox: true
     },
   });
-
 
   mainWindow.loadFile(path.join(__dirname, 'frontend', 'dist', 'index.html'));
   mainWindow.setMenu(null);
@@ -53,7 +53,7 @@ app.whenReady().then(() => {
     return result.canceled ? '' : result.filePaths[0];
   });
 
-
+  // --------------------- Backend IPC Handlers ---------------------
   ipcMain.handle('get-submissions', async (event, projectId) => {
     return new Promise((resolve, reject) => {
       getSubmissionsAndTestConfig(projectId, (err, rows) => {
@@ -88,12 +88,28 @@ app.whenReady().then(() => {
         if (err) reject(err);
         else resolve(rows);
       });
+
+    });
+  });
+  ipcMain.handle('extract-and-save-submissions', async (event, submissionsDir, outputDir, projectId) => {
+    return new Promise((resolve, reject) => {
+      extractAndSaveSubmissions(submissionsDir, outputDir, projectId, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
     });
   });
 
   ipcMain.handle('get-config-by-name', async (event, name) => {
     return new Promise((resolve, reject) => {
       db.getConfigurationByName(name, (err, row) => {
+      });
+    });
+  });
+
+  ipcMain.handle('get-project-by-id', async (event, projectId) => {
+    return new Promise((resolve, reject) => {
+      getProjectById(projectId, (err, row) => {
         if (err) reject(err);
         else resolve(row);
       });
@@ -122,6 +138,15 @@ app.whenReady().then(() => {
       db.addProject(project.name, project.config_id, project.submissions_path, (err, id) => {
         if (err) reject(err);
         else resolve(id);
+      });
+    });
+  });
+
+  ipcMain.handle('compile-all-in-project', async (event, projectId) => {
+    return new Promise((resolve, reject) => {
+      compileAllInProject(projectId, (err, result) => {
+        if (err) reject(err);
+        else resolve(result);
       });
     });
   });
@@ -177,6 +202,23 @@ app.whenReady().then(() => {
       compareAllOutputs(projectId, (err) => {
         if (err) reject(err);
         else resolve();
+      }); 
+    });
+  });
+  ipcMain.handle('run-all-compiled-submissions', async (event, projectId) => {
+    return new Promise((resolve, reject) => {
+      runAllCompiledSubmissions(projectId, (err, result) => {
+        if (err) reject(err);
+        else resolve(result);
+      });
+    });
+  });
+
+  ipcMain.handle('compare-all-outputs', async (event, projectId) => {
+    return new Promise((resolve, reject) => {
+      compareAllOutputs(projectId, (err, result) => {
+        if (err) reject(err);
+        else resolve(result);
       });
     });
   });

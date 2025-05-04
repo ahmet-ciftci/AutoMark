@@ -51,6 +51,7 @@ function App() {
       await window.electron.compareOutputs(projectId);
   
       console.log("Project Handled.");
+      setProjectId(project.id);
       switchView('reports');
   
     } catch (err) {
@@ -90,7 +91,7 @@ function App() {
                  onNewLangConfig={onNewLanguageConfig} // Pass the new handler
                />
       case 'reports':
-        return <ReportsView />
+        return <ReportsView projectId={projectId}/>
       case 'fileExplorer':
         return <FileExplorer />
       default:
