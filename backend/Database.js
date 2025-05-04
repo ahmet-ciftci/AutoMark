@@ -273,6 +273,13 @@ function getTestConfigByProjectId(projectId, callback) {
   });
 }
 
+function getAllProjects(callback) {
+  const query = `SELECT id, name FROM Projects ORDER BY id DESC`;
+  db.all(query, [], (err, rows) => {
+    callback(err, rows);
+  });
+}
+
 
 
 module.exports = {
@@ -302,4 +309,5 @@ module.exports = {
   getConfigurationByName,
   getProjectById,
   getTestConfigByProjectId,
+  getAllProjects,
 };

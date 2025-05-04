@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { FaFile, FaEdit, FaEye, FaQuestionCircle } from 'react-icons/fa'
 
-const MenuBar = ({ onNewProject = () => {} }) => {
+const MenuBar = ({ onNewProject = () => {}, onOpenProject = () => {} }) => {
   const [openMenu, setOpenMenu] = useState(null)
   const menuRef = useRef(null)
   
@@ -58,7 +58,7 @@ const MenuBar = ({ onNewProject = () => {} }) => {
                   <span className="menu-item-text">New Project</span>
                   <span className="menu-item-shortcut">Ctrl+N</span>
                 </div>
-                <div className="menu-item group" onClick={closeMenu}>
+<div className="menu-item group" onClick={() => { onOpenProject(); closeMenu(); }}>
                   <span className="menu-item-text">Open Project</span>
                   <span className="menu-item-shortcut">Ctrl+O</span>
                 </div>

@@ -6,12 +6,14 @@ import ConfigEditor from './components/views/ConfigEditor'
 import ProjectCreation from './components/views/ProjectCreation'
 import ReportsView from './components/views/ReportsView'
 import FileExplorer from './components/views/FileExplorer'
+import OpenProject from './components/views/OpenProject'; 
 
 function App() {
   const [activeView, setActiveView] = useState('project')
   const [selectedLanguage, setSelectedLanguage] = useState('Java') // Can be null for 'new' config
   const [key, setKey] = useState(0) // For view transitions
-  
+  const [showOpenModal, setShowOpenModal] = useState(false);
+
   // Force dark mode
   useEffect(() => {
     document.documentElement.classList.add('dark-theme');
@@ -77,6 +79,21 @@ function App() {
     switchView(view)
   }
 
+  const onSelectExistingProject = async (projectId) => {
+    try {
+      const project = await window.electron.getProjectById(projectId);
+      console.log("Selected project:", project);
+  
+      setProjectId(projectId);
+      setShowOpenModal(false);
+      switchView('reports');
+    } catch (err) {
+      console.error("Error loading project:", err);
+      alert("Could not load project.");
+    }
+  };
+  
+
   // Render the appropriate view based on activeView state
   const renderView = () => {
     switch (activeView) {
@@ -103,7 +120,10 @@ function App() {
 
   return (
     <div className="flex flex-col h-screen bg-[#121212] text-gray-200">
-      <MenuBar onNewProject={openNewProject} />
+      <MenuBar onNewProject={openNewProject}
+      onOpenProject={() => setShowOpenModal(true)}
+        />
+      
       <div className="flex flex-1 overflow-hidden">
         {activeView !== 'project' && activeView !== 'config' && (
           <Sidebar 
@@ -117,6 +137,14 @@ function App() {
           </div>
         </MainContent>
       </div>
+
+      {showOpenModal && (
+    <OpenProject
+      onSelectProject={onSelectExistingProject}
+      onClose={() => setShowOpenModal(false)}
+    />
+    )} 
+
     </div>
   )
 }

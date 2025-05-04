@@ -232,6 +232,16 @@ app.whenReady().then(() => {
     });
   });
 
+  //FOR OPEN PROJECT MODAL
+  ipcMain.handle('get-all-projects', async () => {
+    return new Promise((resolve, reject) => {
+      db.getAllProjects((err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+  });
+  
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
