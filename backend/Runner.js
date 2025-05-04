@@ -1,4 +1,5 @@
-const { spawn } = require("child_process");
+const { spawn, execSync } = require("child_process");
+const fs = require("fs");
 const path = require("path");
 
 const {
@@ -12,39 +13,26 @@ function runAllCompiledSubmissions(projectId, doneCallback) {
   getSubmissionsAndTestConfig(projectId, (err, submissions) => {
     if (err) {
       console.error("Error fetching submissions and test config:", err);
-      if (doneCallback) doneCallback();
-      return;
+      return doneCallback?.();
     }
 
-    if (!submissions || submissions.length === 0) {
-      console.log("No submissions found.");
-      if (doneCallback) doneCallback();
-      return;
+    const compiledSubmissions = (submissions || []).filter(sub => sub.status === "compiled");
+
+    if (compiledSubmissions.length === 0) {
+      console.log("No compiled submissions found.");
+      return doneCallback?.();
     }
 
-    const compiledSubmissions = submissions.filter(sub => sub.status === "compiled");
     let remaining = compiledSubmissions.length;
-
-    if (remaining === 0) {
-      if (doneCallback) doneCallback();
-      return;
-    }
 
     compiledSubmissions.forEach((submission) => {
       console.log(`Running compiled submission for: ${submission.student_id}`);
 
       getConfigurationByProjectId(projectId, (err, config) => {
-        if (err || !config) {
-          console.error(`No configuration found for project ${projectId}`);
-          if (--remaining === 0 && doneCallback) doneCallback();
-          return;
-        }
-
-        if (!config.run_command || config.run_command.trim() === "") {
-          console.warn(`No run command specified for student ${submission.student_id}`);
-          updateSubmissionStatus(submission.submission_id, "skipped", (err) => {
-            if (err) console.error("Error updating skipped submission:", err);
-            if (--remaining === 0 && doneCallback) doneCallback();
+        if (err || !config || !config.run_command?.trim()) {
+          console.warn(`No valid config for ${submission.student_id}`);
+          updateSubmissionStatus(submission.submission_id, "skipped", () => {
+            if (--remaining === 0) doneCallback?.();
           });
           return;
         }
@@ -52,36 +40,35 @@ function runAllCompiledSubmissions(projectId, doneCallback) {
         const runParts = config.run_command.trim().split(/\s+/);
         const executable = runParts[0];
         const baseArgs = runParts.slice(1);
+        const options = { cwd: submission.path };
+        const args = [...baseArgs];
 
-        let args = [...baseArgs];
-        let options = { cwd: submission.path };
+        let inputData = "";
 
-        if (submission.input_method === "manual") {
-          const inputArgs = submission.input ? submission.input.trim().split(/\s+/) : [];
-          args.push(...inputArgs);
-        } else if (submission.input_method === "file") {
-          const fullCmd = `${config.run_command} < ${submission.input}`;
-          args = [];
-          options = { cwd: submission.path, shell: true };
-        } else if (submission.input_method === "script") {
-          const fullCmd = `${config.run_command} $(${submission.input})`;
-          args = [];
-          options = { cwd: submission.path, shell: true };
-        } else {
-          console.warn(`Unsupported input method for student ${submission.student_id}`);
-          updateSubmissionStatus(submission.submission_id, "skipped", (err) => {
-            if (err) console.error("Error updating skipped submission:", err);
-            if (--remaining === 0 && doneCallback) doneCallback();
+        try {
+          if (submission.input_method === "manual") {
+            inputData = submission.input?.trim() || "";
+          } else if (submission.input_method === "file") {
+            const inputPath = path.join(submission.path, submission.input);
+            inputData = fs.readFileSync(inputPath, "utf-8");
+          } else if (submission.input_method === "script") {
+            inputData = execSync(submission.input, { cwd: submission.path, shell: true }).toString();
+          } else {
+            console.warn(`Unsupported input method for student ${submission.student_id}`);
+            updateSubmissionStatus(submission.submission_id, "skipped", () => {
+              if (--remaining === 0) doneCallback?.();
+            });
+            return;
+          }
+        } catch (inputErr) {
+          console.error(`Error preparing input for ${submission.student_id}:`, inputErr.message);
+          updateSubmissionStatus(submission.submission_id, "runtime_error", () => {
+            if (--remaining === 0) doneCallback?.();
           });
           return;
         }
 
-        let child;
-        if (options.shell) {
-          child = spawn(config.run_command + (submission.input_method === "file" ? ` < ${submission.input}` : ` $(${submission.input})`), options);
-        } else {
-          child = spawn(executable, args, options);
-        }
+        const child = spawn(executable, args, options);
 
         let output = "";
         let errorOutput = "";
@@ -99,28 +86,26 @@ function runAllCompiledSubmissions(projectId, doneCallback) {
             console.log(`${submission.student_id} executed successfully.`);
 
             updateActualOutput(submission.submission_id, output.trim(), (err) => {
-              if (err) {
-                console.error("Error updating actual output:", err);
-              }
+              if (err) console.error("Error updating actual output:", err);
 
               updateSubmissionStatus(submission.submission_id, "executed", (err2) => {
-                if (err2) {
-                  console.error("Error updating execution status:", err2);
-                }
-                if (--remaining === 0 && doneCallback) doneCallback();
+                if (err2) console.error("Error updating status:", err2);
+                if (--remaining === 0) doneCallback?.();
               });
             });
-
           } else {
             console.error(`${submission.student_id} runtime error:`, errorOutput.trim());
             updateSubmissionStatus(submission.submission_id, "runtime_error", (err) => {
-              if (err) {
-                console.error("Error updating runtime error status:", err);
-              }
-              if (--remaining === 0 && doneCallback) doneCallback();
+              if (err) console.error("Error updating status:", err);
+              if (--remaining === 0) doneCallback?.();
             });
           }
         });
+
+        if (inputData) {
+          child.stdin.write(inputData);
+        }
+        child.stdin.end();
       });
     });
   });
