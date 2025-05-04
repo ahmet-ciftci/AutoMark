@@ -10,21 +10,39 @@ const {
 
 function compileSubmission(submission, config) {
   return new Promise((resolve) => {
-    const sourcePath = path.join(submission.path, config.source_code);
-    const outputPath = path.join(submission.path, "main");
+    const sourceFiles = config.source_code
+      ? config.source_code
+          .split(/\s+/)
+          .map(f => path.join(submission.path, f))
+          .map(f => `"${f}"`)
+          .join(" ")
+      : "";
 
-    if (!fs.existsSync(sourcePath)) {
-      console.error(`Source not found for ${submission.student_id}`);
-      return resolve({ success: false, errorMessage: `Source file not found: ${sourcePath}` });
+    // Check that all source files exist
+    if (config.source_code) {
+      const missingFiles = config.source_code
+        .split(/\s+/)
+        .filter(f => !fs.existsSync(path.join(submission.path, f)));
+
+      if (missingFiles.length > 0) {
+        const errorMessage = `Missing source file(s): ${missingFiles.join(", ")}`;
+        console.error(`Source not found for ${submission.student_id}: ${errorMessage}`);
+        return resolve({ success: false, errorMessage });
+      }
     }
 
-    const compileCmd = `${config.compile_command} ${sourcePath} ${config.compile_parameters} -o ${outputPath}`;
-    exec(compileCmd, (error, stdout, stderr) => {
-      if (error) {
-        return resolve({ success: false, errorMessage: stderr || stdout || error.message });
-      }
+    if (config.compile_command && config.compile_command.trim() !== "") {
+      const compileCmd = `${config.compile_command} ${sourceFiles} ${config.compile_parameters || ""}`;
+      exec(compileCmd, { cwd: submission.path }, (error, stdout, stderr) => {
+        if (error) {
+          return resolve({ success: false, errorMessage: stderr || stdout || error.message });
+        }
+        resolve({ success: true });
+      });
+    } else {
+      // No compilation needed
       resolve({ success: true });
-    });
+    }
   });
 }
 
@@ -46,7 +64,7 @@ function compileAllInProject(projectId, doneCallback) {
       await new Promise((resolveStep) => {
         getConfigurationByProjectId(projectId, async (err, config) => {
           if (err || !config) {
-            console.error(`⚠️ No config for ${submission.student_id}`);
+            console.error(`No config for ${submission.student_id}`);
             return resolveStep();
           }
 

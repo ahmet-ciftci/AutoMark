@@ -40,17 +40,33 @@ function runAllCompiledSubmissions(projectId, doneCallback) {
           return;
         }
 
-        const executablePath = path.join(submission.path, config.run_command);
-        let args = [];
-        let child;
+        if (!config.run_command || config.run_command.trim() === "") {
+          console.warn(`No run command specified for student ${submission.student_id}`);
+          updateSubmissionStatus(submission.submission_id, "skipped", (err) => {
+            if (err) console.error("Error updating skipped submission:", err);
+            if (--remaining === 0 && doneCallback) doneCallback();
+          });
+          return;
+        }
+
+        const runParts = config.run_command.trim().split(/\s+/);
+        const executable = runParts[0];
+        const baseArgs = runParts.slice(1);
+
+        let args = [...baseArgs];
+        let options = { cwd: submission.path };
 
         if (submission.input_method === "manual") {
-          args = submission.input ? submission.input.trim().split(/\s+/) : [];
-          child = spawn(executablePath, args);
+          const inputArgs = submission.input ? submission.input.trim().split(/\s+/) : [];
+          args.push(...inputArgs);
         } else if (submission.input_method === "file") {
-          child = spawn(`${executablePath} < ${submission.input}`, { shell: true });
+          const fullCmd = `${config.run_command} < ${submission.input}`;
+          args = [];
+          options = { cwd: submission.path, shell: true };
         } else if (submission.input_method === "script") {
-          child = spawn(`${executablePath} $(${submission.input})`, { shell: true });
+          const fullCmd = `${config.run_command} $(${submission.input})`;
+          args = [];
+          options = { cwd: submission.path, shell: true };
         } else {
           console.warn(`Unsupported input method for student ${submission.student_id}`);
           updateSubmissionStatus(submission.submission_id, "skipped", (err) => {
@@ -58,6 +74,13 @@ function runAllCompiledSubmissions(projectId, doneCallback) {
             if (--remaining === 0 && doneCallback) doneCallback();
           });
           return;
+        }
+
+        let child;
+        if (options.shell) {
+          child = spawn(config.run_command + (submission.input_method === "file" ? ` < ${submission.input}` : ` $(${submission.input})`), options);
+        } else {
+          child = spawn(executable, args, options);
         }
 
         let output = "";
@@ -89,7 +112,7 @@ function runAllCompiledSubmissions(projectId, doneCallback) {
             });
 
           } else {
-            console.error(`${submission.student_id} runtime error.`);
+            console.error(`${submission.student_id} runtime error:`, errorOutput.trim());
             updateSubmissionStatus(submission.submission_id, "runtime_error", (err) => {
               if (err) {
                 console.error("Error updating runtime error status:", err);
