@@ -54,7 +54,10 @@ function runAllCompiledSubmissions(projectId, doneCallback) {
             inputData = fs.readFileSync(inputPath, "utf-8").trim();
             args.push(...inputData.split(/\s+/));
           } else if (submission.input_method === "script") {
-            inputData = execSync(submission.input, { cwd: submission.path, shell: true }).toString();
+            // Execute the script and capture its output
+            inputData = execSync(submission.input, { cwd: submission.path, shell: true }).toString().trim();
+            // Add the script output as arguments, similar to other methods
+            args.push(...inputData.split(/\s+/));
           } else {
             console.warn(`Unsupported input method for student ${submission.student_id}`);
             updateSubmissionStatus(submission.submission_id, "skipped", () => {
@@ -104,8 +107,9 @@ function runAllCompiledSubmissions(projectId, doneCallback) {
           }
         });
 
+        // Write input data to stdin if required
         if (inputData) {
-          child.stdin.write(inputData);
+          child.stdin.write(inputData + "\n");
         }
         child.stdin.end();
       });

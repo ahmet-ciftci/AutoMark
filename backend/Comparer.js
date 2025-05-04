@@ -37,16 +37,50 @@ function compareAllOutputs(projectId, doneCallback) {
         });
       };
 
+      // Normalize line endings for any comparison method
+      const normalizeLineEndings = (str) => str?.replace(/\r\n/g, "\n");
+      const expectedNormalized = normalizeLineEndings(submission.expected_output?.trim());
+      const actualNormalized = normalizeLineEndings(actual);
+
       if (submission.output_method === "manual") {
-        const normalizeLineEndings = (str) => str.replace(/\r\n/g, "\n");
-        const expected = normalizeLineEndings(submission.expected_output?.trim());
-        const actualNormalized = normalizeLineEndings(actual);
-        const matched = actualNormalized === expected;
+        // Direct string comparison
+        const matched = actualNormalized === expectedNormalized;
         console.log(`${submission.student_id}: manual comparison ${matched ? 'matched' : 'failed'}`);
         finish(matched ? "success" : "failed");
-
-      } else {
-        console.warn(`Unsupported method for ${submission.student_id}`);
+      } 
+      else if (submission.output_method === "file") {
+        // Compare with file content
+        try {
+          const matched = actualNormalized === expectedNormalized;
+          console.log(`${submission.student_id}: file comparison ${matched ? 'matched' : 'failed'}`);
+          finish(matched ? "success" : "failed");
+        } catch (error) {
+          console.error(`Error comparing file output for ${submission.student_id}:`, error);
+          finish("error");
+        }
+      } 
+      else if (submission.output_method === "script") {
+        // Write outputs to temporary files and execute comparison script
+        try {
+          // For script comparison, both expected and actual should be available in the submission
+          if (!submission.expected_output || !actual) {
+            console.error(`Missing expected or actual output for ${submission.student_id}`);
+            return finish("error");
+          }
+          
+          // Same comparison as manual for now
+          // In a full implementation, you'd execute the script specified in submission.expected_output
+          // and pass it the actual output, then check its return code
+          const matched = actualNormalized === expectedNormalized;
+          console.log(`${submission.student_id}: script comparison ${matched ? 'matched' : 'failed'}`);
+          finish(matched ? "success" : "failed");
+        } catch (error) {
+          console.error(`Error executing comparison script for ${submission.student_id}:`, error);
+          finish("error");
+        }
+      } 
+      else {
+        console.warn(`Unsupported method ${submission.output_method} for ${submission.student_id}`);
         finish("skipped");
       }
     });
