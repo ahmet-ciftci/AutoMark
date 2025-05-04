@@ -103,9 +103,12 @@ app.whenReady().then(() => {
   ipcMain.handle('get-config-by-name', async (event, name) => {
     return new Promise((resolve, reject) => {
       db.getConfigurationByName(name, (err, row) => {
+        if (err) reject(err);
+        else resolve(row);  
       });
     });
   });
+  
 
   ipcMain.handle('get-project-by-id', async (event, projectId) => {
     return new Promise((resolve, reject) => {
