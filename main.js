@@ -289,11 +289,6 @@ ipcMain.handle('get-project-files', async (event, projectId) => {
 });
 
 
-
-
-
-  
-
   ipcMain.handle('read-file', async (event, filePath) => {
     try {
       const stats = fs.statSync(filePath);
@@ -309,6 +304,25 @@ ipcMain.handle('get-project-files', async (event, projectId) => {
     }
   });
   
+  ipcMain.handle('save-file', async (event, filePath, content) => {
+  try {
+    fs.writeFileSync(filePath, content, 'utf-8');
+    return true;
+  } catch (err) {
+    console.error('Failed to save file:', err);
+    throw err;
+  }
+});
+
+  ipcMain.handle('show-save-dialog', async () => {
+    const result = await dialog.showSaveDialog({
+      title: 'Save CSV Report',
+      defaultPath: 'submissions_report.csv',
+      filters: [{ name: 'CSV Files', extensions: ['csv'] }]
+    });
+
+    return result.canceled ? null : result.filePath;
+  });
 
   
   app.on('activate', () => {

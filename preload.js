@@ -20,5 +20,8 @@ contextBridge.exposeInMainWorld('electron', {
   deleteConfig: (config) => ipcRenderer.invoke('delete-config', config),
   getProjectFiles: (projectId) => ipcRenderer.invoke('get-project-files', projectId),
   readFile: (filePath) => ipcRenderer.invoke('read-file', filePath),
+  saveFile: (path, content) => ipcRenderer.invoke('save-file', path, content),
+  showSaveDialog: () => ipcRenderer.invoke('show-save-dialog'),
+
 
 });

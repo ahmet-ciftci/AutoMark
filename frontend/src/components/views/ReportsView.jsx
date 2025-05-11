@@ -12,6 +12,7 @@ const ReportsView = ({projectId}) => {
   const [studentOutput, setStudentOutput] = useState([])
   const [currentMatches, setCurrentMatches] = useState(0)
   const [currentTotal, setCurrentTotal] = useState(0)
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
     // Define an async function inside useEffect
@@ -94,11 +95,30 @@ const ReportsView = ({projectId}) => {
     )
   }
 
-  const exportReport = (format) => {
-    if (selectedReports.length === 0) return
-    setShowExportOptions(false)
-    setShowExportSelection(false)
-  }
+ const exportReport = async () => {
+  if (selectedReports.length === 0) return;
+
+  const filePath = await window.electron.showSaveDialog();
+  if (!filePath) return;
+
+  const selectedSubmissions = submissions.filter(sub =>
+    selectedReports.includes(sub.submission_id)
+  );
+
+  let csvContent = 'Student ID,Status,Actual Output\n';
+
+  selectedSubmissions.forEach(sub => {
+    const cleanOutput = (sub.actual_output || 'N/A').replace(/(\r\n|\n|\r)/gm, ' ');
+    csvContent += `"${sub.student_id}","${sub.status}","${cleanOutput}"\n`;
+  });
+
+  await window.electron.saveFile(filePath, csvContent);
+
+  setShowSuccessModal(true);
+  setShowExportSelection(false);
+  setSelectedReports([]);
+};
+
 
   const getScoreColorClass = (score) => {
     if (score === undefined || score === null) return 'text-gray-400';
@@ -121,44 +141,55 @@ const ReportsView = ({projectId}) => {
       </div>
   
       {/* Export Selection Modal */}
-      {showExportSelection && (
-        <div className="modal-backdrop">
-          <div className="bg-[#1e1e1e] border border-[#333] rounded-md w-full max-w-3xl flex flex-col animate-modal">
-            <div className="card-header justify-between">
-              <h3 className="font-medium text-xl">Select Submissions</h3>
-              <button onClick={() => setShowExportSelection(false)} className="text-gray-400 hover:text-gray-200 p-2">
-                <FaTimes />
-              </button>
-            </div>
-            <div className="p-4 overflow-auto flex-1">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {submissions.map(sub => {
-                  const isSelected = selectedReports.includes(sub.submission_id)
-                  return (
-                    <div
-                      key={sub.submission_id}
-                      onClick={() => handleReportSelection(sub.submission_id)}
-                      className={`p-4 rounded cursor-pointer ${
-                        isSelected
-                          ? 'bg-primary-700/30 border border-primary-500'
-                          : 'bg-[#262626] border border-[#333] hover:border-[#444] hover:bg-[#2a2a2a]'
-                      }`}
-                    >
-                      <div className="flex justify-between">
-                        <span className="text-gray-300 font-medium">Student {sub.student_id}</span>
-                        <span className={`px-2 py-1 rounded text-sm ${getScoreColorClass(sub.score || 0)}`}>
-                          {sub.score || '0'}
-                        </span>
-                      </div>
-                      {isSelected && <FaCheck className="text-primary-400 float-right mt-2" />}
-                    </div>
-                  )
-                })}
+    {showExportSelection && (
+  <div className="modal-backdrop">
+    <div className="bg-[#1e1e1e] border border-[#333] rounded-md w-full max-w-3xl flex flex-col animate-modal">
+      <div className="card-header justify-between">
+        <h3 className="font-medium text-xl">Select Submissions</h3>
+        <button onClick={() => setShowExportSelection(false)} className="text-gray-400 hover:text-gray-200 p-2">
+          <FaTimes />
+        </button>
+      </div>
+      <div className="p-4 overflow-auto flex-1">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {submissions.map(sub => {
+            const isSelected = selectedReports.includes(sub.submission_id);
+            return (
+              <div
+                key={sub.submission_id}
+                onClick={() => handleReportSelection(sub.submission_id)}
+                className={`p-4 rounded cursor-pointer ${
+                  isSelected
+                    ? 'bg-primary-700/30 border border-primary-500'
+                    : 'bg-[#262626] border border-[#333] hover:border-[#444] hover:bg-[#2a2a2a]'
+                }`}
+              >
+                <div className="flex justify-between">
+                  <span className="text-gray-300 font-medium">Student {sub.student_id}</span>
+                  <span className={`px-2 py-1 rounded text-sm ${getScoreColorClass(sub.score || 0)}`}>
+                    {sub.score || '0'}
+                  </span>
+                </div>
+                {isSelected && <FaCheck className="text-primary-400 float-right mt-2" />}
               </div>
-            </div>
-          </div>
+            );
+          })}
         </div>
-      )}
+      </div>
+
+      {/* ✨ Export buttons */}
+        <div className="p-4 border-t border-[#333] flex justify-end">
+    <button onClick={exportReport} className="btn-primary">
+      <FaFileCsv className="mr-2" /> Export as CSV
+    </button>
+      </div>
+
+    </div>
+  </div>
+
+  
+)}
+
   
       {/* Main Content Grid */}
       <div className="grid grid-cols-3 gap-4 mb-4">
@@ -254,6 +285,22 @@ const ReportsView = ({projectId}) => {
           </div>
         </div>
       </div>
+
+          {/* Export Success Modal */}
+    {showSuccessModal && (
+      <div className="modal-backdrop">
+        <div className="bg-[#1e1e1e] p-6 rounded shadow-md border border-green-500 max-w-md mx-auto mt-40">
+          <h2 className="text-lg font-bold text-green-400 mb-2">Export Completed</h2>
+          <p className="text-gray-300">Your CSV file was successfully saved.</p>
+          <div className="mt-4 text-right">
+            <button className="btn-primary" onClick={() => setShowSuccessModal(false)}>
+              OK
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
     </div>
   )
 }
