@@ -112,7 +112,7 @@ function App() {
       case 'reports':
         return <ReportsView projectId={projectId}/>
       case 'fileExplorer':
-        return <FileExplorer />
+  return <FileExplorer projectId={projectId} />
       default:
         return <ReportsView />
     }

@@ -1,101 +1,106 @@
-import { useState } from 'react'
-import { FaChevronRight, FaChevronDown, FaFolder, FaFolderOpen, FaFile, FaCode } from 'react-icons/fa'
+import { useState, useEffect } from 'react';
+import { FaChevronRight, FaChevronDown, FaFolder, FaFolderOpen, FaFile } from 'react-icons/fa';
 
-const FileExplorer = () => {
-  const [expandedFolders, setExpandedFolders] = useState({})
-  
-  // File system structure
-  const folders = {}
+const FileExplorer = ({ projectId = 1 }) => {
+  const [expandedFolders, setExpandedFolders] = useState({});
+  const [folders, setFolders] = useState([]);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [fileContentKey, setFileContentKey] = useState(0);
 
-  const toggleFolder = (folderName) => {
+  const toggleFolder = (folderPath) => {
     setExpandedFolders(prev => ({
       ...prev,
-      [folderName]: !prev[folderName]
-    }))
-  }
+      [folderPath]: !prev[folderPath]
+    }));
+  };
 
-  const [selectedFile, setSelectedFile] = useState(null)
-  const [fileContentKey, setFileContentKey] = useState(0)
-  
-  const selectFile = (fileId, fileName) => {
-    setFileContentKey(prevKey => prevKey + 1)
-    setSelectedFile({
-      id: fileId,
-      name: fileName,
-      content: ''
-    })
-  }
+  const selectFile = async (filePath, fileName) => {
+    setFileContentKey(prevKey => prevKey + 1);
+    try {
+      const content = await window.electron.readFile(filePath);
+      setSelectedFile({
+        id: filePath,
+        name: fileName,
+        content
+      });
+    } catch (err) {
+      console.error("Failed to read file", err);
+    }
+  };
+
+  useEffect(() => {
+    const loadStructure = async () => {
+      try {
+        const structure = await window.electron.getProjectFiles(projectId);
+        setFolders(structure);
+      } catch (err) {
+        console.error("Failed to load folder structure", err);
+      }
+    };
+
+    loadStructure();
+  }, [projectId]);
+
+  const renderFolder = (item) => {
+    if (item.type === 'file') {
+      return (
+        <div
+          key={item.path}
+          className={`ml-6 py-1.5 px-2 text-gray-200 cursor-pointer rounded ${
+            selectedFile?.id === item.path ? 'file-selected' : 'hover:bg-dark-hover'
+          }`}
+          onClick={() => selectFile(item.path, item.name)}
+        >
+          <FaFile className="mr-2 text-gray-400 inline" />
+          {item.name}
+        </div>
+      );
+    }
+
+    return (
+      <div key={item.path} className="mb-1 ml-2">
+        <div
+          className="flex items-center py-1.5 px-2 cursor-pointer text-gray-200 hover:bg-dark-hover rounded"
+          onClick={() => toggleFolder(item.path)}
+        >
+          <span className="mr-2">
+            {expandedFolders[item.path] ? <FaChevronDown /> : <FaChevronRight />}
+          </span>
+          {expandedFolders[item.path]
+            ? <FaFolderOpen className="mr-2 text-yellow-500" />
+            : <FaFolder className="mr-2 text-yellow-500" />
+          }
+          {item.name}
+        </div>
+        {expandedFolders[item.path] && item.children?.map(renderFolder)}
+      </div>
+    );
+  };
 
   return (
     <div className="h-full flex flex-col">
       <h1 className="text-2xl font-bold mb-6 text-gray-200">
         File Explorer
       </h1>
-      
+
       <div className="flex-1 grid grid-cols-[300px_1fr] gap-4">
         <div className="card">
           <div className="card-header">EXPLORER</div>
           <div className="p-2 overflow-auto max-h-[calc(100vh-220px)]">
-            {Object.keys(folders).map(folderName => (
-              <div key={folderName} className="mb-1">
-                <div 
-                  className="flex items-center py-1.5 px-2 cursor-pointer text-gray-200 hover:bg-dark-hover rounded"
-                  onClick={() => toggleFolder(folderName)}
-                >
-                  <span className={`mr-2 folder-icon ${expandedFolders[folderName] ? 'folder-icon-expanded' : ''}`}>
-                    <FaChevronRight />
-                  </span>
-                  {expandedFolders[folderName] 
-                    ? <FaFolderOpen className="mr-2 text-yellow-500" /> 
-                    : <FaFolder className="mr-2 text-yellow-500" />
-                  }
-                  {folderName}
-                </div>
-                <div className={`folder-children ${expandedFolders[folderName] ? 'folder-children-expanded' : ''}`}>
-                  {folders[folderName]?.map(item => (
-                    <div key={item.id} className="ml-4">
-                      <div 
-                        className="flex items-center py-1.5 px-2 cursor-pointer text-gray-200 hover:bg-dark-hover rounded"
-                        onClick={() => toggleFolder(item.name)}
-                      >
-                        <span className={`mr-2 folder-icon ${expandedFolders[item.name] ? 'folder-icon-expanded' : ''}`}>
-                          <FaChevronRight />
-                        </span>
-                        {expandedFolders[item.name] 
-                          ? <FaFolderOpen className="mr-2 text-yellow-500" /> 
-                          : <FaFolder className="mr-2 text-yellow-500" />
-                        }
-                        {item.name}
-                      </div>
-                      <div className={`folder-children ${expandedFolders[item.name] ? 'folder-children-expanded' : ''}`}>
-                        {item.children && item.children.map(child => (
-                          <div 
-                            key={child.id} 
-                            className={`ml-6 py-1.5 px-2 text-gray-200 cursor-pointer rounded ${
-                              selectedFile?.id === child.id ? 'file-selected' : 'hover:bg-dark-hover'
-                            }`}
-                            onClick={() => selectFile(child.id, child.name)}
-                          >
-                            <FaFile className="mr-2 text-gray-400 inline" />
-                            {child.name}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+            {folders.map(renderFolder)}
           </div>
         </div>
-        
+
         <div className="card overflow-auto">
           {selectedFile ? (
             <>
               <div className="card-header">
                 {selectedFile.name}
               </div>
-              <pre key={fileContentKey} className="font-mono text-gray-300 p-4 bg-dark-bg rounded file-content-fade selectable-text">
+              <pre
+                key={fileContentKey}
+                className="font-mono text-gray-300 p-4 bg-dark-bg rounded file-content-fade selectable-text"
+              >
                 {selectedFile.content}
               </pre>
             </>
@@ -107,7 +112,7 @@ const FileExplorer = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default FileExplorer
+export default FileExplorer;

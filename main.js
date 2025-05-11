@@ -7,6 +7,9 @@ const { getProjectById } = require('./backend/Database.js');
 const { compileAllInProject } = require('./backend/Compiler.js');
 const {runAllCompiledSubmissions} = require('./backend/Runner.js');
 const { compareAllOutputs } = require('./backend/Comparer.js');
+const { readDirectoryRecursive } = require('./backend/DirectoryReader'); 
+const fs = require('fs');
+const { getSubmissionPathsByProject } = require('./backend/Database.js');
 
 let mainWindow;
 
@@ -255,7 +258,59 @@ app.whenReady().then(() => {
     });
   });
   
+ipcMain.handle('get-project-files', async (event, projectId) => {
+  return new Promise((resolve, reject) => {
+    db.getConfigurationByProjectId(projectId, (err, config) => {
+      if (err || !config) return reject(err || new Error("Config not found"));
 
+      const extension = path.extname(config.source_code).toLowerCase(); 
+
+      db.getSubmissionPathsByProject(projectId, (err2, rows) => {
+        if (err2 || !rows || rows.length === 0) return reject(err2 || new Error("No submissions found"));
+
+        try {
+          const result = rows.map(row => {
+            const folderPath = row.path;
+            const structure = readDirectoryRecursive(folderPath, [extension]);
+            return {
+              name: path.basename(folderPath),
+              type: 'folder',
+              path: folderPath,
+              children: structure
+            };
+          });
+          resolve(result);
+        } catch (e) {
+          reject(e);
+        }
+      });
+    });
+  });
+});
+
+
+
+
+
+  
+
+  ipcMain.handle('read-file', async (event, filePath) => {
+    try {
+      const stats = fs.statSync(filePath);
+      if (stats.isDirectory()) {
+        throw new Error('Cannot read directory');
+      }
+  
+      const content = fs.readFileSync(filePath, 'utf-8');
+      return content;
+    } catch (err) {
+      console.error("Error in read-file:", err);
+      throw err;
+    }
+  });
+  
+
+  
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

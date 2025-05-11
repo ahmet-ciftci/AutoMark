@@ -299,6 +299,13 @@ function getAllProjects(callback) {
   });
 }
 
+function getSubmissionPathsByProject(projectId, callback) {
+  const query = `SELECT path FROM Submissions WHERE project_id = ?`;
+  db.all(query, [projectId], (err, rows) => {
+    callback(err, rows);
+  });
+}
+
 
 
 module.exports = {
@@ -329,4 +336,6 @@ module.exports = {
   getProjectById,
   getTestConfigByProjectId,
   getAllProjects,
+  getSubmissionPathsByProject,
+
 };
