@@ -306,6 +306,13 @@ function getSubmissionPathsByProject(projectId, callback) {
   });
 }
 
+async function getConfigurationById(id, callback) {
+  const query = `SELECT * FROM Configurations WHERE id = ?`;
+  db.get(query, [id], (err, row) => {
+    callback(err, row);
+  });
+}
+
 
 
 module.exports = {
@@ -337,5 +344,5 @@ module.exports = {
   getTestConfigByProjectId,
   getAllProjects,
   getSubmissionPathsByProject,
-
+  getConfigurationById
 };

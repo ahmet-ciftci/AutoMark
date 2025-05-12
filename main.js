@@ -288,6 +288,15 @@ ipcMain.handle('get-project-files', async (event, projectId) => {
   });
 });
 
+  ipcMain.handle('get-configuration-by-id', async (event, id) => {
+    return new Promise((resolve, reject) => {
+      db.getConfigurationById(id, (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+  });
+
 
   ipcMain.handle('read-file', async (event, filePath) => {
     try {
@@ -321,6 +330,18 @@ ipcMain.handle('get-project-files', async (event, projectId) => {
       filters: [{ name: 'CSV Files', extensions: ['csv'] }]
     });
 
+    return result.canceled ? null : result.filePath;
+  });
+
+  // Add this handler specifically for JSON configuration export
+  ipcMain.handle('show-json-save-dialog', async (event, options = {}) => {
+    const defaultOptions = {
+      title: 'Export Configuration',
+      defaultPath: options.defaultPath || 'config.json',
+      filters: [{ name: 'JSON Files', extensions: ['json'] }]
+    };
+    
+    const result = await dialog.showSaveDialog(defaultOptions);
     return result.canceled ? null : result.filePath;
   });
 

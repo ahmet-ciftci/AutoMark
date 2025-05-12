@@ -176,6 +176,7 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
     setSelectedLanguage(config.config_name)
     setSelectedConfigId(config.config_id)
     setShowLanguages(false)
+    console.log('Selected config ID:', config.config_id) // Debug log
   }
 
   const onPickSubmissionsPath = async () => {
@@ -286,6 +287,98 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
     }
   }
 
+  const handleExportConfig = async () => {
+    if (!selectedConfigId) {
+      console.error('No configuration selected for export');
+      return;
+    }
+    
+    try {
+      console.log('Exporting configuration with ID:', selectedConfigId);
+      
+      // Get the selected configuration by ID
+      const config = await window.electron.getConfigurationById(selectedConfigId);
+      
+      if (!config) {
+        console.error('Configuration not found');
+        return;
+      }
+      
+      // Format the configuration for export
+      const exportConfig = {
+        config_name: config.name || config.config_name,
+        compile_command: config.compile_command,
+        source_code: config.source_code || '',
+        compile_parameters: config.compile_parameters || '',
+        run_command: config.run_command
+      };
+      
+      // Create default filename based on configuration name
+      const configName = config.name || config.config_name;
+      const fileName = `${configName.replace(/\s+/g, '_')}_config.json`;
+      
+      // Use the new specific JSON save dialog
+      const filePath = await window.electron.showJsonSaveDialog({
+        defaultPath: fileName
+      });
+      
+      if (!filePath) {
+        console.log('Export canceled by user');
+        return;
+      }
+      
+      // Save the file
+      await window.electron.saveFile(filePath, JSON.stringify(exportConfig, null, 2));
+      console.log('Configuration exported successfully to:', filePath);
+      
+    } catch (error) {
+      console.error('Error exporting configuration:', error);
+      // You could add a user-visible error message here
+    }
+  };
+  
+  const handleImportConfig = async () => {
+    try {
+      // Open file dialog to select JSON configuration file
+      const filePath = await window.electron.openFile({
+        filters: [{ name: 'JSON Files', extensions: ['json'] }]
+      });
+      
+      if (!filePath) return; // User canceled
+      
+      // Read the file content
+      const fileContent = await window.electron.readFile(filePath);
+      
+      // Parse the JSON data
+      const importedConfig = JSON.parse(fileContent);
+      
+      // Validate the configuration structure
+      if (!importedConfig.config_name || 
+          !importedConfig.compile_command || 
+          !importedConfig.run_command) {
+        console.error('Invalid configuration format');
+        return;
+      }
+      
+      // Save the configuration to the database
+      await window.electron.saveConfig(importedConfig);
+      
+      // Refresh the configurations list
+      const configs = await window.electron.getConfigurations();
+      setConfigurations(configs);
+      
+      // Select the newly imported configuration
+      const newConfig = configs.find(c => c.config_name === importedConfig.config_name);
+      if (newConfig) {
+        setSelectedLanguage(newConfig.config_name);
+        setSelectedConfigId(newConfig.config_id);
+      }
+      
+    } catch (error) {
+      console.error('Error importing configuration:', error);
+    }
+  };
+
   return (
     <>
 
@@ -361,13 +454,13 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
                             <div
                               key={config.config_id}
                               className={`px-4 py-2 hover:bg-dark-hover cursor-pointer transition-colors ${
-                                selectedLanguage === config.config_name ? 'bg-primary-700/20 text-primary-400' : ''
+                                selectedConfigId === config.config_id ? 'bg-primary-700/20 text-primary-400' : ''
                               }`}
                               onClick={() => onLanguageSelect(config)}
                             >
                               <div className="flex items-center justify-between">
                                 <span>{config.config_name}</span>
-                                {selectedLanguage === config.config_name && <FaCheck className="text-primary-400 text-sm" />}
+                                {selectedConfigId === config.config_id && <FaCheck className="text-primary-400 text-sm" />}
                               </div>
                             </div>
                           ))
@@ -405,7 +498,7 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
                   </button>
 
                   <button
-                    onClick={() => {}}
+                    onClick={handleImportConfig}
                     className="btn-outline hover:border-primary-500 hover:bg-primary-700/20 hover:text-primary-400"
                     title="Import configuration"
                   >
@@ -414,9 +507,10 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
                   </button>
 
                   <button
-                    onClick={() => {}}
+                    onClick={handleExportConfig}
                     className="btn-outline hover:border-primary-500 hover:bg-primary-700/20 hover:text-primary-400"
                     title="Export configuration"
+                    disabled={!selectedConfigId}
                   >
                     <FaFileExport className="mr-2 text-xs" />
                     Export

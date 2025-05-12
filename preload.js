@@ -22,6 +22,6 @@ contextBridge.exposeInMainWorld('electron', {
   readFile: (filePath) => ipcRenderer.invoke('read-file', filePath),
   saveFile: (path, content) => ipcRenderer.invoke('save-file', path, content),
   showSaveDialog: () => ipcRenderer.invoke('show-save-dialog'),
-
-
+  getConfigurationById: (id) => ipcRenderer.invoke('get-configuration-by-id', id),
+  showJsonSaveDialog: (options) => ipcRenderer.invoke('show-json-save-dialog', options),
 });
