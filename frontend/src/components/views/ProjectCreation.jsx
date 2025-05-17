@@ -119,18 +119,7 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
   
   
 
-  useEffect(() => {
-    setManualInput('')
-    setInputScriptCommand('')
-    setInputScriptFilePath('')
-    setInputFilePath('')
-    setManualExpectedOutput('')
-    setExpectedOutputScriptCommand('')
-    setExpectedOutputScriptFilePath('')
-    setExpectedOutputFilePath('')
-    setInput('')
-    setExpectedOutput('')
-  }, [selectedLanguage])
+  useEffect(() => {}, [selectedLanguage])
 
   useEffect(() => {
     let finalInputVal = ''
