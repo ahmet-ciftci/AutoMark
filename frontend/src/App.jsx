@@ -8,11 +8,33 @@ import ReportsView from './components/views/ReportsView'
 import FileExplorer from './components/views/FileExplorer'
 import OpenProject from './components/views/OpenProject'; 
 
+const initialProjectCreationFormData = {
+  project_name: '',
+  submissions_directory: '',
+  selectedLanguage: '', 
+  selectedConfigId: null,
+  input_generation_method: 'manual',
+  input: '',
+  expected_output_generation_method: 'manual',
+  expected_output: '',
+  manualInput: '',
+  inputScriptCommand: '',
+  inputScriptFilePath: '',
+  combinedInputScriptCommand: '', 
+  inputFilePath: '',
+  manualExpectedOutput: '',
+  expectedOutputScriptCommand: '',
+  expectedOutputScriptFilePath: '',
+  combinedExpectedOutputScriptCommand: '',
+  expectedOutputFilePath: '',
+};
+
 function App() {
   const [activeView, setActiveView] = useState('project')
-  const [selectedLanguage, setSelectedLanguage] = useState('Java') // Can be null for 'new' config
-  const [key, setKey] = useState(0) // For view transitions
+  const [selectedLanguageForEditor, setSelectedLanguageForEditor] = useState('Java')
+  const [key, setKey] = useState(0)
   const [showOpenModal, setShowOpenModal] = useState(false);
+  const [projectCreationFormData, setProjectCreationFormData] = useState(initialProjectCreationFormData);
 
   // Force dark mode
   useEffect(() => {
@@ -28,18 +50,20 @@ function App() {
   
   // Menu handlers for opening project
   const openNewProject = () => {
+    // Optionally reset form data when "New Project" is explicitly chosen from menu
+    // setProjectCreationFormData(initialProjectCreationFormData); 
     switchView('project')
   }
   
   // Handler for the Edit button in ProjectCreation
-  const onEditLanguage = (lang) => {
-    setSelectedLanguage(lang)
+  const onEditLanguage = (langName) => { // langName is the config_name
+    setSelectedLanguageForEditor(langName)
     switchView('config')
   }
 
   // Handler for the New button in ProjectCreation
   const onNewLanguageConfig = () => {
-    setSelectedLanguage(null); // Set language to null to indicate a new config
+    setSelectedLanguageForEditor(null); // Set language to null to indicate a new config
     switchView('config');
   };
   // Handler for project creation
@@ -47,7 +71,7 @@ function App() {
   const onCreateProject = async ({ project, testConfig }) => {
     try {
       const newProjectId = await window.electron.addProject(project);
-      setProjectId(newProjectId); // Use setState instead of assignment
+      setProjectId(newProjectId); 
       
       await window.electron.addTestConfig(newProjectId, testConfig);
       await window.electron.extractSubmissions(newProjectId, project.submissions_path);
@@ -57,6 +81,7 @@ function App() {
   
       console.log("Project Handled.");
       console.log("Project ID:", newProjectId);
+      setProjectCreationFormData(initialProjectCreationFormData); // Reset form on success
       switchView('reports');
   
     } catch (err) {
@@ -70,7 +95,13 @@ function App() {
     switchView('project')
   }
   
-  const onSaveConfig = (config) => {
+  const onSaveConfig = (updatedConfig) => {
+    // Update projectCreationFormData to select the newly saved/edited config
+    setProjectCreationFormData(prevData => ({
+      ...prevData,
+      selectedLanguage: updatedConfig.config_name,
+      selectedConfigId: updatedConfig.id,
+    }));
     switchView('project')
   }
 
@@ -99,15 +130,18 @@ function App() {
     switch (activeView) {
       case 'config':
         return <ConfigEditor 
-                 selectedLanguage={selectedLanguage} // Pass null if creating new
+                 selectedLanguage={selectedLanguageForEditor} 
                  onCancelConfig={onCancelConfig}
                  onSaveConfig={onSaveConfig}
                />
       case 'project':
         return <ProjectCreation 
+                 formData={projectCreationFormData}
+                 setFormData={setProjectCreationFormData}
+                 initialFormData={initialProjectCreationFormData}
                  onEditLang={onEditLanguage}
                  onCreateProject={onCreateProject}
-                 onNewLangConfig={onNewLanguageConfig} // Pass the new handler
+                 onNewLangConfig={onNewLanguageConfig} 
                />
       case 'reports':
         return <ReportsView projectId={projectId}/>
