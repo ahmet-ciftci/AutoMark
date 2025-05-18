@@ -2,20 +2,43 @@ const path = require('path');
 const { 
   getSubmissionsAndTestConfig, 
   getConfigurationByProjectId,
-  getTestConfigByProjectId 
+  getTestConfigByProjectId,
+  updateSubmissionStatus
 } = require('./Database.js');
 const { extractAndSaveSubmissions } = require('./FileManager.js');
 const { compileSubmission } = require('./Compiler.js');
 const { runSubmission } = require('./Runner.js');
 const { compareOutput } = require('./Comparer.js');
 
+// TTL value in milliseconds
+const SUBMISSION_TIMEOUT = 30000; // 30 seconds
+
 /**
- * Process a project by extracting, compiling, running, and comparing all submissions
- * @param {number} projectId - The ID of the project to process
- * @param {string} submissionsPath - Path to the directory containing submission ZIP files
- * @param {number} [concurrency=4] - How many submissions to process in parallel
- * @returns {Promise<Object>} Processing results
+ * Create a promise that rejects after a specified timeout
+ * @param {number} ms - Timeout in milliseconds
+ * @returns {Promise} A promise that rejects after the timeout
  */
+function timeout(ms) {
+  return new Promise((_, reject) => {
+    setTimeout(() => {
+      reject(new Error(`Operation timed out after ${ms}ms`));
+    }, ms);
+  });
+}
+
+/**
+ * Execute a promise with a timeout
+ * @param {Promise} promise - The promise to execute
+ * @param {number} ms - Timeout in milliseconds
+ * @returns {Promise} A promise that resolves with the result or rejects with timeout
+ */
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    timeout(ms)
+  ]);
+}
+
 async function processProject(projectId, submissionsPath, concurrency = 4) {
   try {
     // Step 1: Extract all submission files
@@ -66,7 +89,8 @@ async function processProject(projectId, submissionsPath, concurrency = 4) {
       success: 0,
       failed: 0,
       errors: 0,
-      skipped: 0
+      skipped: 0,
+      timeouts: 0
     };
     
     console.log(`Processing ${submissions.length} submissions with concurrency of ${concurrency}`);
@@ -76,8 +100,10 @@ async function processProject(projectId, submissionsPath, concurrency = 4) {
         const batch = submissions.slice(i, i + batchSize);
         console.log(`Processing batch ${i/batchSize + 1} of ${Math.ceil(submissions.length/batchSize)}`);
         
-        // Process each submission in the batch in parallel
-        await Promise.all(batch.map(submission => processSubmission(submission, config, testConfig, results)));
+        // Process each submission in the batch in parallel with timeout
+        await Promise.all(batch.map(submission => 
+          processSubmissionWithTimeout(submission, config, testConfig, results)
+        ));
       }
     };
     
@@ -91,13 +117,68 @@ async function processProject(projectId, submissionsPath, concurrency = 4) {
 }
 
 /**
- * Process a single submission sequentially through compile → run → compare
+ * Process a submission with a timeout
  * @param {Object} submission - The submission to process
  * @param {Object} config - Compilation configuration
  * @param {Object} testConfig - Test configuration
- * @param {Object} results - Reference to the results object for tracking
- * @returns {Promise<Object>} - The submission processing result
+ * @param {Object} results - Results tracker
+ * @returns {Promise<Object>} The processing result
  */
+async function processSubmissionWithTimeout(submission, config, testConfig, results) {
+  try {
+    return await withTimeout(
+      processSubmission(submission, config, testConfig, results),
+      SUBMISSION_TIMEOUT
+    );
+  } catch (error) {
+    const studentId = submission.student_id;
+    const submissionId = submission.submission_id || submission.id;
+    const isTimeout = error.message.includes('timed out');
+    
+    if (isTimeout) {
+      console.error(`⏱️ ${studentId} processing timed out after ${SUBMISSION_TIMEOUT/1000}s`);
+      results.timeouts++;
+      
+      // Update the submission status in the database
+      await new Promise((resolve) => {
+        updateSubmissionStatus(
+          submissionId, 
+          'time_exceeded', 
+          `Processing exceeded the maximum allowed time (${SUBMISSION_TIMEOUT/1000}s)`, 
+          (err) => {
+            if (err) console.error(`Failed to update status for ${studentId}:`, err);
+            resolve();
+          }
+        );
+      });
+      
+      return { 
+        studentId, 
+        status: 'time_exceeded', 
+        message: `Processing exceeded the maximum allowed time (${SUBMISSION_TIMEOUT/1000}s)`
+      };
+    } else {
+      console.error(`Error processing ${studentId}:`, error);
+      results.errors++;
+      
+      // Update the submission status in the database
+      await new Promise((resolve) => {
+        updateSubmissionStatus(
+          submissionId, 
+          'error', 
+          error.message, 
+          (err) => {
+            if (err) console.error(`Failed to update status for ${studentId}:`, err);
+            resolve();
+          }
+        );
+      });
+      
+      return { studentId, status: 'error', message: error.message };
+    }
+  }
+}
+
 async function processSubmission(submission, config, testConfig, results) {
   const studentId = submission.student_id;
   console.log(`Starting sequential processing for ${studentId}`);
@@ -174,24 +255,8 @@ async function processSubmission(submission, config, testConfig, results) {
   }
 }
 
-/**
- * Process an individual submission by ID through the complete workflow
- * @param {number} submissionId - The ID of the submission to process
- * @param {number} configId - The configuration ID to use (optional)
- * @returns {Promise<Object>} Processing result
- */
-async function processSubmissionById(submissionId, configId) {
-  // This function would be implemented to process a single submission
-  // by getting the submission, config, and test config by IDs
-  // and calling processSubmission
-  
-  // Implementation would be similar to the IPC handlers in main.js
-  
-  throw new Error('Not implemented');
-}
 
 module.exports = {
   processProject,
-  processSubmission,
-  processSubmissionById
+  processSubmission
 };

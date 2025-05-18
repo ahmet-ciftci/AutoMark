@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FaFilePdf, FaFileCsv, FaFileCode, FaDownload, FaTimes, FaCheck, FaExclamationTriangle } from 'react-icons/fa'
+import { FaFilePdf, FaFileCsv, FaFileCode, FaDownload, FaTimes, FaCheck, FaExclamationTriangle, FaClock } from 'react-icons/fa'
 
 const ReportsView = ({projectId}) => {
   const [showExportOptions, setShowExportOptions] = useState(false)
@@ -69,10 +69,19 @@ const ReportsView = ({projectId}) => {
     setErrorMessage("");
     setErrorType("");
     
-    // Check for compilation or runtime errors
-    if (student.status === "compile_error" || student.status === "runtime_error") {
+    // Check for compilation, runtime errors, or timeout
+    if (student.status === "compile_error" || student.status === "runtime_error" || student.status === "time_exceeded") {
       setHasError(true);
-      setErrorType(student.status === "compile_error" ? "Compilation Error" : "Runtime Error");
+      
+      // Set the appropriate error type based on the status
+      if (student.status === "compile_error") {
+        setErrorType("Compilation Error");
+      } else if (student.status === "runtime_error") {
+        setErrorType("Runtime Error");
+      } else if (student.status === "time_exceeded") {
+        setErrorType("Time Limit Exceeded");
+      }
+      
       setErrorMessage(student.error_message || "No error details available");
       setStudentOutput([]);
       setCurrentMatches(0);
@@ -147,6 +156,7 @@ const ReportsView = ({projectId}) => {
     return 'text-red-500'
   }
 
+  // Update the getStatusColorClass function to include time_exceeded
   const getStatusColorClass = (status) => {
     switch(status) {
       case 'success': return 'text-green-500';
@@ -154,6 +164,7 @@ const ReportsView = ({projectId}) => {
       case 'executed': return 'text-blue-500';
       case 'compile_error': return 'text-red-500';
       case 'runtime_error': return 'text-orange-500';
+      case 'time_exceeded': return 'text-yellow-500';
       default: return 'text-gray-400';
     }
   }
@@ -239,7 +250,7 @@ const ReportsView = ({projectId}) => {
               >
                 <span>Student {sub.student_id}</span>
                 <span className={
-                  sub.status === 'compile_error' || sub.status === 'runtime_error' 
+                  sub.status === 'compile_error' || sub.status === 'runtime_error' || sub.status === 'time_exceeded'
                     ? getStatusColorClass(sub.status) 
                     : getScoreColorClass(sub.score)
                 }>
@@ -247,9 +258,11 @@ const ReportsView = ({projectId}) => {
                     ? "Compile Error" 
                     : sub.status === 'runtime_error' 
                       ? "Runtime Error" 
-                      : sub.score 
-                        ? `${sub.score}%` 
-                        : sub.status || 'Pending'}
+                      : sub.status === 'time_exceeded'
+                        ? "Time Limit Exceeded"
+                        : sub.score 
+                          ? `${sub.score}%` 
+                          : sub.status || 'Pending'}
                 </span>
               </div>
             ))}
@@ -284,11 +297,31 @@ const ReportsView = ({projectId}) => {
           <div className="p-4 flex flex-col items-center">
             {hasError ? (
               <div className="w-full">
-                <div className="bg-red-900/30 border border-red-700/40 rounded p-4 mb-4 flex items-start">
-                  <FaExclamationTriangle className="text-red-500 mr-3 mt-1 flex-shrink-0" />
+                <div className={`${
+                  errorType === "Time Limit Exceeded" 
+                    ? "bg-yellow-900/30 border border-yellow-700/40" 
+                    : "bg-red-900/30 border border-red-700/40"
+                } rounded p-4 mb-4 flex items-start`}>
+                  {errorType === "Time Limit Exceeded" ? (
+                    <FaClock className="text-yellow-500 mr-3 mt-1 flex-shrink-0" />
+                  ) : (
+                    <FaExclamationTriangle className="text-red-500 mr-3 mt-1 flex-shrink-0" />
+                  )}
                   <div className="flex-1">
-                    <h3 className="font-medium text-red-400 mb-2">{errorType}</h3>
-                    <pre className="text-sm font-mono whitespace-pre-wrap text-red-200 overflow-auto max-h-64">
+                    <h3 className={`font-medium mb-2 ${
+                      errorType === "Time Limit Exceeded" 
+                        ? "text-yellow-400" 
+                        : errorType === "Compilation Error" 
+                          ? "text-red-400" 
+                          : "text-orange-400"
+                    }`}>
+                      {errorType}
+                    </h3>
+                    <pre className={`text-sm font-mono whitespace-pre-wrap overflow-auto max-h-64 ${
+                      errorType === "Time Limit Exceeded" 
+                        ? "text-yellow-200" 
+                        : "text-red-200"
+                    }`}>
                       {errorMessage}
                     </pre>
                   </div>
@@ -350,7 +383,11 @@ const ReportsView = ({projectId}) => {
           {hasError && (
             <div>
               <span className={`font-medium ${
-                errorType === "Compilation Error" ? "text-red-500" : "text-orange-500"
+                errorType === "Compilation Error" 
+                  ? "text-red-500" 
+                  : errorType === "Runtime Error" 
+                    ? "text-orange-500"
+                    : "text-yellow-500"
               }`}>
                 {errorType} detected
               </span>
