@@ -5,17 +5,18 @@ const fs = require("fs");
 const {
   getSubmissionsAndTestConfig,
   getConfigurationByProjectId,
-  updateSubmissionStatus
+  updateSubmissionStatus,
+  updateSubmissionError
 } = require("./Database");
 
 function compileSubmission(submission, config) {
   return new Promise((resolve) => {
     const sourceFiles = config.source_code
       ? config.source_code
-          .split(/\s+/)
-          .map(f => path.join(submission.path, f))
-          .map(f => `"${f}"`)
-          .join(" ")
+        .split(/\s+/)
+        .map(f => path.join(submission.path, f))
+        .map(f => `"${f}"`)
+        .join(" ")
       : "";
 
     // Check that all source files exist
@@ -78,6 +79,12 @@ function compileAllInProject(projectId, doneCallback) {
             });
           } else {
             console.error(`${submission.student_id} failed:`, result.errorMessage);
+
+            const { updateSubmissionError } = require("./Database");
+            updateSubmissionError(submission.submission_id, result.errorMessage, (err) => {
+              if (err) console.error("Failed to save compile error to DB:", err.message);
+            });
+
             updateSubmissionStatus(submission.submission_id, "compile_error", (err) => {
               if (err) console.error("DB update failed:", err.message);
               resolveStep();
