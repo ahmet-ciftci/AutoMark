@@ -11,9 +11,9 @@ contextBridge.exposeInMainWorld('electron', {
   addProject: (project) => ipcRenderer.invoke('add-project', project),
   addTestConfig: (projectId, config) => ipcRenderer.invoke('add-test-config', projectId, config),
   extractSubmissions: (projectId, path) => ipcRenderer.invoke('extract-submissions', projectId, path),
-  compileSubmissions: (projectId) => ipcRenderer.invoke('compile-submissions', projectId),
-  runSubmissions: (projectId) => ipcRenderer.invoke('run-submissions', projectId),
-  compareOutputs: (projectId) => ipcRenderer.invoke('compare-outputs', projectId),
+  compileSubmission: (submissionId, configId) => ipcRenderer.invoke('compile-submission', submissionId, configId),
+  runSubmission: (submissionId, configId) => ipcRenderer.invoke('run-submission', submissionId, configId),
+  compareOutput: (submissionId) => ipcRenderer.invoke('compare-output', submissionId),
   getProjectById: (projectId) => ipcRenderer.invoke('get-project-by-id', projectId),
   getTestConfigByProjectId: (projectId) => ipcRenderer.invoke('get-test-config-by-project-id', projectId),
   getAllProjects: () => ipcRenderer.invoke('get-all-projects'),
@@ -24,4 +24,10 @@ contextBridge.exposeInMainWorld('electron', {
   showSaveDialog: () => ipcRenderer.invoke('show-save-dialog'),
   getConfigurationById: (id) => ipcRenderer.invoke('get-configuration-by-id', id),
   showJsonSaveDialog: (options) => ipcRenderer.invoke('show-json-save-dialog', options),
+  getSubmissionById: (id) => ipcRenderer.invoke('get-submission-by-id', id),
+  updateSubmission: (submission) => ipcRenderer.invoke('update-submission', submission),
+  processProject: (projectId, submissionsPath, concurrency) => 
+    ipcRenderer.invoke('process-project', projectId, submissionsPath, concurrency),
+  processSubmission: (submissionId, configId) => 
+    ipcRenderer.invoke('process-submission', submissionId, configId),
 });

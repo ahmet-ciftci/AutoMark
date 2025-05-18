@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FaFilePdf, FaFileCsv, FaFileCode, FaDownload, FaTimes, FaCheck } from 'react-icons/fa'
+import { FaFilePdf, FaFileCsv, FaFileCode, FaDownload, FaTimes, FaCheck, FaExclamationTriangle } from 'react-icons/fa'
 
 const ReportsView = ({projectId}) => {
   const [showExportOptions, setShowExportOptions] = useState(false)
@@ -12,7 +12,10 @@ const ReportsView = ({projectId}) => {
   const [studentOutput, setStudentOutput] = useState([])
   const [currentMatches, setCurrentMatches] = useState(0)
   const [currentTotal, setCurrentTotal] = useState(0)
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
+  const [hasError, setHasError] = useState(false)
+  const [errorType, setErrorType] = useState("")
 
   useEffect(() => {
     // Define an async function inside useEffect
@@ -61,6 +64,22 @@ const ReportsView = ({projectId}) => {
 
   // Helper function to update student output display
   const updateStudentOutput = (student) => {
+    // Reset error state
+    setHasError(false);
+    setErrorMessage("");
+    setErrorType("");
+    
+    // Check for compilation or runtime errors
+    if (student.status === "compile_error" || student.status === "runtime_error") {
+      setHasError(true);
+      setErrorType(student.status === "compile_error" ? "Compilation Error" : "Runtime Error");
+      setErrorMessage(student.error_message || "No error details available");
+      setStudentOutput([]);
+      setCurrentMatches(0);
+      setCurrentTotal(0);
+      return;
+    }
+    
     if (!student || !student.actual_output) {
       setStudentOutput([]);
       setCurrentMatches(0);
@@ -95,30 +114,30 @@ const ReportsView = ({projectId}) => {
     )
   }
 
- const exportReport = async () => {
-  if (selectedReports.length === 0) return;
+  const exportReport = async () => {
+    if (selectedReports.length === 0) return;
 
-  const filePath = await window.electron.showSaveDialog();
-  if (!filePath) return;
+    const filePath = await window.electron.showSaveDialog();
+    if (!filePath) return;
 
-  const selectedSubmissions = submissions.filter(sub =>
-    selectedReports.includes(sub.submission_id)
-  );
+    const selectedSubmissions = submissions.filter(sub =>
+      selectedReports.includes(sub.submission_id)
+    );
 
-  let csvContent = 'Student ID,Status,Actual Output\n';
+    let csvContent = 'Student ID,Status,Error Message,Actual Output\n';
 
-  selectedSubmissions.forEach(sub => {
-    const cleanOutput = (sub.actual_output || 'N/A').replace(/(\r\n|\n|\r)/gm, ' ');
-    csvContent += `"${sub.student_id}","${sub.status}","${cleanOutput}"\n`;
-  });
+    selectedSubmissions.forEach(sub => {
+      const cleanOutput = (sub.actual_output || 'N/A').replace(/(\r\n|\n|\r)/gm, ' ');
+      const errorMessage = (sub.error_message || 'N/A').replace(/(\r\n|\n|\r)/gm, ' ');
+      csvContent += `"${sub.student_id}","${sub.status}","${errorMessage}","${cleanOutput}"\n`;
+    });
 
-  await window.electron.saveFile(filePath, csvContent);
+    await window.electron.saveFile(filePath, csvContent);
 
-  setShowSuccessModal(true);
-  setShowExportSelection(false);
-  setSelectedReports([]);
-};
-
+    setShowSuccessModal(true);
+    setShowExportSelection(false);
+    setSelectedReports([]);
+  };
 
   const getScoreColorClass = (score) => {
     if (score === undefined || score === null) return 'text-gray-400';
@@ -126,6 +145,17 @@ const ReportsView = ({projectId}) => {
     if (s >= 70) return 'text-green-500'
     if (s >= 50) return 'text-yellow-400'
     return 'text-red-500'
+  }
+
+  const getStatusColorClass = (status) => {
+    switch(status) {
+      case 'success': return 'text-green-500';
+      case 'compiled': return 'text-blue-400';
+      case 'executed': return 'text-blue-500';
+      case 'compile_error': return 'text-red-500';
+      case 'runtime_error': return 'text-orange-500';
+      default: return 'text-gray-400';
+    }
   }
 
   return (
@@ -141,55 +171,57 @@ const ReportsView = ({projectId}) => {
       </div>
   
       {/* Export Selection Modal */}
-    {showExportSelection && (
-  <div className="modal-backdrop">
-    <div className="bg-[#1e1e1e] border border-[#333] rounded-md w-full max-w-3xl flex flex-col animate-modal">
-      <div className="card-header justify-between">
-        <h3 className="font-medium text-xl">Select Submissions</h3>
-        <button onClick={() => setShowExportSelection(false)} className="text-gray-400 hover:text-gray-200 p-2">
-          <FaTimes />
-        </button>
-      </div>
-      <div className="p-4 overflow-auto flex-1">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {submissions.map(sub => {
-            const isSelected = selectedReports.includes(sub.submission_id);
-            return (
-              <div
-                key={sub.submission_id}
-                onClick={() => handleReportSelection(sub.submission_id)}
-                className={`p-4 rounded cursor-pointer ${
-                  isSelected
-                    ? 'bg-primary-700/30 border border-primary-500'
-                    : 'bg-[#262626] border border-[#333] hover:border-[#444] hover:bg-[#2a2a2a]'
-                }`}
-              >
-                <div className="flex justify-between">
-                  <span className="text-gray-300 font-medium">Student {sub.student_id}</span>
-                  <span className={`px-2 py-1 rounded text-sm ${getScoreColorClass(sub.score || 0)}`}>
-                    {sub.score || '0'}
-                  </span>
-                </div>
-                {isSelected && <FaCheck className="text-primary-400 float-right mt-2" />}
+      {showExportSelection && (
+        <div className="modal-backdrop">
+          <div className="bg-[#1e1e1e] border border-[#333] rounded-md w-full max-w-3xl flex flex-col animate-modal">
+            <div className="card-header justify-between">
+              <h3 className="font-medium text-xl">Select Submissions</h3>
+              <button onClick={() => setShowExportSelection(false)} className="text-gray-400 hover:text-gray-200 p-2">
+                <FaTimes />
+              </button>
+            </div>
+            <div className="p-4 overflow-auto flex-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {submissions.map(sub => {
+                  const isSelected = selectedReports.includes(sub.submission_id);
+                  return (
+                    <div
+                      key={sub.submission_id}
+                      onClick={() => handleReportSelection(sub.submission_id)}
+                      className={`p-4 rounded cursor-pointer ${
+                        isSelected
+                          ? 'bg-primary-700/30 border border-primary-500'
+                          : 'bg-[#262626] border border-[#333] hover:border-[#444] hover:bg-[#2a2a2a]'
+                      }`}
+                    >
+                      <div className="flex justify-between">
+                        <span className="text-gray-300 font-medium">Student {sub.student_id}</span>
+                        <span className={`px-2 py-1 rounded text-sm ${
+                          sub.status === 'compile_error' || sub.status === 'runtime_error' 
+                            ? getStatusColorClass(sub.status) 
+                            : getScoreColorClass(sub.score || 0)
+                        }`}>
+                          {sub.status === 'compile_error' || sub.status === 'runtime_error' 
+                            ? sub.status.replace('_', ' ') 
+                            : (sub.score || '0')}
+                        </span>
+                      </div>
+                      {isSelected && <FaCheck className="text-primary-400 float-right mt-2" />}
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            </div>
+
+            {/* Export buttons */}
+            <div className="p-4 border-t border-[#333] flex justify-end">
+              <button onClick={exportReport} className="btn-primary">
+                <FaFileCsv className="mr-2" /> Export as CSV
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-
-      {/* ✨ Export buttons */}
-        <div className="p-4 border-t border-[#333] flex justify-end">
-    <button onClick={exportReport} className="btn-primary">
-      <FaFileCsv className="mr-2" /> Export as CSV
-    </button>
-      </div>
-
-    </div>
-  </div>
-
-  
-)}
-
+      )}
   
       {/* Main Content Grid */}
       <div className="grid grid-cols-3 gap-4 mb-4">
@@ -206,8 +238,18 @@ const ReportsView = ({projectId}) => {
                 onClick={() => setSelectedSubmission(sub.submission_id)}
               >
                 <span>Student {sub.student_id}</span>
-                <span className={getScoreColorClass(sub.score)}>
-                  {sub.score ? `${sub.score}%` : sub.status || 'Pending'}
+                <span className={
+                  sub.status === 'compile_error' || sub.status === 'runtime_error' 
+                    ? getStatusColorClass(sub.status) 
+                    : getScoreColorClass(sub.score)
+                }>
+                  {sub.status === 'compile_error' 
+                    ? "Compile Error" 
+                    : sub.status === 'runtime_error' 
+                      ? "Runtime Error" 
+                      : sub.score 
+                        ? `${sub.score}%` 
+                        : sub.status || 'Pending'}
                 </span>
               </div>
             ))}
@@ -234,29 +276,47 @@ const ReportsView = ({projectId}) => {
           </div>
         </div>
   
-        {/* Actual Output */}
+        {/* Actual Output or Error Message */}
         <div className="card">
-          <div className="card-header justify-center">Student Output</div>
+          <div className="card-header justify-center">
+            {hasError ? errorType : "Student Output"}
+          </div>
           <div className="p-4 flex flex-col items-center">
-            {studentOutput.map((o, idx) => (
-              <div
-                key={idx}
-                onMouseEnter={() => setHoveredOutputIndex(idx)}
-                onMouseLeave={() => setHoveredOutputIndex(null)}
-                className={`py-2 px-4 m-1 font-mono rounded w-full text-center relative border ${
-                  hoveredOutputIndex === idx
-                    ? 'bg-dark-hover border-dark-hover'
-                    : o.matching
-                    ? 'border-green-500/30 bg-green-500/10'
-                    : 'bg-error-700/20 text-error-100 border-error-700/30'
-                }`}
-              >
-                <span className="absolute left-2 text-xs text-gray-500">{idx + 1}</span>
-                {o.value}
+            {hasError ? (
+              <div className="w-full">
+                <div className="bg-red-900/30 border border-red-700/40 rounded p-4 mb-4 flex items-start">
+                  <FaExclamationTriangle className="text-red-500 mr-3 mt-1 flex-shrink-0" />
+                  <div className="flex-1">
+                    <h3 className="font-medium text-red-400 mb-2">{errorType}</h3>
+                    <pre className="text-sm font-mono whitespace-pre-wrap text-red-200 overflow-auto max-h-64">
+                      {errorMessage}
+                    </pre>
+                  </div>
+                </div>
               </div>
-            ))}
-            {studentOutput.length === 0 && (
-              <div className="text-gray-400 italic p-4">No output available</div>
+            ) : (
+              <>
+                {studentOutput.map((o, idx) => (
+                  <div
+                    key={idx}
+                    onMouseEnter={() => setHoveredOutputIndex(idx)}
+                    onMouseLeave={() => setHoveredOutputIndex(null)}
+                    className={`py-2 px-4 m-1 font-mono rounded w-full text-center relative border ${
+                      hoveredOutputIndex === idx
+                        ? 'bg-dark-hover border-dark-hover'
+                        : o.matching
+                        ? 'border-green-500/30 bg-green-500/10'
+                        : 'bg-error-700/20 text-error-100 border-error-700/30'
+                    }`}
+                  >
+                    <span className="absolute left-2 text-xs text-gray-500">{idx + 1}</span>
+                    {o.value}
+                  </div>
+                ))}
+                {studentOutput.length === 0 && !hasError && (
+                  <div className="text-gray-400 italic p-4">No output available</div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -265,42 +325,54 @@ const ReportsView = ({projectId}) => {
       {/* Summary Footer */}
       <div className="card-footer mt-2 sticky bottom-0">
         <div className="flex justify-end space-x-6">
-          <div>
-            <span className="text-gray-400">Matches:</span>
-            <span className={`ml-2 font-medium ${currentMatches === currentTotal && currentTotal > 0 ? 'text-green-500' : 'text-white'}`}>
-              {currentMatches}/{currentTotal}
-            </span>
-          </div>
-          <div>
-            <span className="text-gray-400">Score:</span>
-            <span className={`ml-2 ${
-              currentTotal > 0 && Math.round((currentMatches / currentTotal) * 100) >= 70 
-                ? 'text-green-500' 
-                : 'text-white'
-            }`}>
-              {currentTotal > 0
-                ? Math.round((currentMatches / currentTotal) * 100) + '%'
-                : '0%'}
-            </span>
-          </div>
+          {!hasError && (
+            <>
+              <div>
+                <span className="text-gray-400">Matches:</span>
+                <span className={`ml-2 font-medium ${currentMatches === currentTotal && currentTotal > 0 ? 'text-green-500' : 'text-white'}`}>
+                  {currentMatches}/{currentTotal}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-400">Score:</span>
+                <span className={`ml-2 ${
+                  currentTotal > 0 && Math.round((currentMatches / currentTotal) * 100) >= 70 
+                    ? 'text-green-500' 
+                    : 'text-white'
+                }`}>
+                  {currentTotal > 0
+                    ? Math.round((currentMatches / currentTotal) * 100) + '%'
+                    : '0%'}
+                </span>
+              </div>
+            </>
+          )}
+          {hasError && (
+            <div>
+              <span className={`font-medium ${
+                errorType === "Compilation Error" ? "text-red-500" : "text-orange-500"
+              }`}>
+                {errorType} detected
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
-          {/* Export Success Modal */}
-    {showSuccessModal && (
-      <div className="modal-backdrop">
-        <div className="bg-[#1e1e1e] p-6 rounded shadow-md border border-green-500 max-w-md mx-auto mt-40">
-          <h2 className="text-lg font-bold text-green-400 mb-2">Export Completed</h2>
-          <p className="text-gray-300">Your CSV file was successfully saved.</p>
-          <div className="mt-4 text-right">
-            <button className="btn-primary" onClick={() => setShowSuccessModal(false)}>
-              OK
-            </button>
+      {/* Export Success Modal */}
+      {showSuccessModal && (
+        <div className="modal-backdrop">
+          <div className="bg-[#1e1e1e] p-6 rounded shadow-md border border-green-500 max-w-md mx-auto mt-40">
+            <h2 className="text-lg font-bold text-green-400 mb-2">Export Completed</h2>
+            <p className="text-gray-300">Your CSV file was successfully saved.</p>
+            <div className="mt-4 text-right">
+              <button className="btn-primary" onClick={() => setShowSuccessModal(false)}>
+                OK
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    )}
-
+      )}
     </div>
   )
 }

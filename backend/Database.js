@@ -209,9 +209,19 @@ function deleteSubmission(id, callback) {
 }
 
 // Other Methods
-function updateSubmissionStatus(id, status, callback) {
-  const query = `UPDATE Submissions SET status = ? WHERE id = ?`;
-  db.run(query, [status, id], function (err) {
+function updateSubmissionStatus(id, status, errorMessage = null, callback) {
+  let query;
+  let params;
+  
+  if (errorMessage !== null) {
+    query = `UPDATE Submissions SET status = ?, error_message = ? WHERE id = ?`;
+    params = [status, errorMessage, id];
+  } else {
+    query = `UPDATE Submissions SET status = ? WHERE id = ?`;
+    params = [status, id];
+  }
+  
+  db.run(query, params, function (err) {
     callback(err, this.changes);
   });
 }

@@ -4,12 +4,13 @@ const db = require('./backend/Database');
 const { getSubmissionsAndTestConfig } = require('./backend/Database.js');
 const { extractAndSaveSubmissions } = require('./backend/FileManager.js');
 const { getProjectById } = require('./backend/Database.js');
-const { compileAllInProject } = require('./backend/Compiler.js');
-const {runAllCompiledSubmissions} = require('./backend/Runner.js');
-const { compareAllOutputs } = require('./backend/Comparer.js');
+const { compileSubmission } = require('./backend/Compiler.js');
+const { runSubmission } = require('./backend/Runner.js');
+const { compareOutput } = require('./backend/Comparer.js');
 const { readDirectoryRecursive } = require('./backend/DirectoryReader'); 
 const fs = require('fs');
 const { getSubmissionPathsByProject } = require('./backend/Database.js');
+const { processProject, processSubmission } = require('./backend/Processor.js');
 
 let mainWindow;
 
@@ -29,12 +30,9 @@ function createWindow() {
 
   mainWindow.loadFile(path.join(__dirname, 'frontend', 'dist', 'index.html'));
   mainWindow.setMenu(null);
-  
 }
 
-
 app.whenReady().then(() => {
-  
   createWindow();
 
   db.initializeDatabase();
@@ -91,15 +89,6 @@ app.whenReady().then(() => {
         if (err) reject(err);
         else resolve(rows);
       });
-
-    });
-  });
-  ipcMain.handle('extract-and-save-submissions', async (event, submissionsDir, outputDir, projectId) => {
-    return new Promise((resolve, reject) => {
-      extractAndSaveSubmissions(submissionsDir, outputDir, projectId, (err) => {
-        if (err) reject(err);
-        else resolve();
-      });
     });
   });
 
@@ -112,7 +101,6 @@ app.whenReady().then(() => {
     });
   });
   
-
   ipcMain.handle('get-project-by-id', async (event, projectId) => {
     return new Promise((resolve, reject) => {
       getProjectById(projectId, (err, row) => {
@@ -148,15 +136,6 @@ app.whenReady().then(() => {
     });
   });
 
-  ipcMain.handle('compile-all-in-project', async (event, projectId) => {
-    return new Promise((resolve, reject) => {
-      compileAllInProject(projectId, (err, result) => {
-        if (err) reject(err);
-        else resolve(result);
-      });
-    });
-  });
-
   ipcMain.handle('add-test-config', async (event, projectId, config) => {
     return new Promise((resolve, reject) => {
       db.addTestConfig(
@@ -173,7 +152,7 @@ app.whenReady().then(() => {
     });
   });
 
-  //outputpathi sabit gir şimdilik
+  // Extract submissions from a directory
   ipcMain.handle('extract-submissions', async (event, projectId, submissionsPath) => {
     try {
       const outputPath = path.join(submissionsPath, '..', 'output');
@@ -184,51 +163,103 @@ app.whenReady().then(() => {
     }
   });
   
-  // Handle compilation of submissions
-  ipcMain.handle('compile-submissions', async (event, projectId) => {
+  // Process individual submissions - one by one approach
+  ipcMain.handle('compile-submission', async (event, submissionId, configId) => {
     return new Promise((resolve, reject) => {
-      compileAllInProject(projectId, (err) => {
-        if (err) reject(err);
-        else resolve();
+      // First get the submission details
+      db.getSubmissionById(submissionId, (err, submission) => {
+        if (err) return reject(err);
+        
+        // Get the configuration if configId provided, otherwise use project's default
+        const getConfig = configId 
+          ? (callback) => db.getConfigurationById(configId, callback)
+          : (callback) => db.getConfigurationByProjectId(submission.project_id, callback);
+          
+        getConfig((err, config) => {
+          if (err) return reject(err);
+          if (!config) return reject(new Error('Configuration not found'));
+          
+          // Compile the submission with the config
+          compileSubmission(submission, config)
+            .then(result => resolve(result))
+            .catch(err => reject(err));
+        });
       });
     });
   });
-  // Handle execution of submissions
-  ipcMain.handle('run-submissions', async (event, projectId) => {
+  
+  ipcMain.handle('run-submission', async (event, submissionId, configId) => {
     return new Promise((resolve, reject) => {
-      runAllCompiledSubmissions(projectId, (err) => {
-        if (err) reject(err);
-        else resolve();
+      // First get the submission details
+      db.getSubmissionById(submissionId, (err, submission) => {
+        if (err) return reject(err);
+        
+        // Get the configuration if configId provided, otherwise use project's default
+        const getConfig = configId 
+          ? (callback) => db.getConfigurationById(configId, callback)
+          : (callback) => db.getConfigurationByProjectId(submission.project_id, callback);
+          
+        getConfig((err, config) => {
+          if (err) return reject(err);
+          if (!config) return reject(new Error('Configuration not found'));
+          
+          // Run the submission with the config
+          runSubmission(submission, config)
+            .then(result => resolve(result))
+            .catch(err => reject(err));
+        });
       });
     });
   });
-  // Handle output comparison
-  ipcMain.handle('compare-outputs', async (event, projectId) => {
+  
+  ipcMain.handle('compare-output', async (event, submissionId) => {
     return new Promise((resolve, reject) => {
-      compareAllOutputs(projectId, (err) => {
-        if (err) reject(err);
-        else resolve();
-      }); 
-    });
-  });
-  ipcMain.handle('run-all-compiled-submissions', async (event, projectId) => {
-    return new Promise((resolve, reject) => {
-      runAllCompiledSubmissions(projectId, (err, result) => {
-        if (err) reject(err);
-        else resolve(result);
+      // Get the submission with its test config
+      db.getSubmissionById(submissionId, (err, submission) => {
+        if (err) return reject(err);
+        
+        // Get test config for the project
+        db.getTestConfigByProjectId(submission.project_id, (err, testConfig) => {
+          if (err) return reject(err);
+          if (!testConfig) return reject(new Error('Test configuration not found'));
+          
+          // Merge test config with submission for comparison
+          const submissionWithConfig = { ...submission, ...testConfig };
+          
+          // Compare the output
+          compareOutput(submissionWithConfig)
+            .then(result => resolve(result))
+            .catch(err => reject(err));
+        });
       });
     });
   });
 
-  ipcMain.handle('compare-all-outputs', async (event, projectId) => {
+  ipcMain.handle('get-submission-by-id', async (event, id) => {
     return new Promise((resolve, reject) => {
-      compareAllOutputs(projectId, (err, result) => {
+      db.getSubmissionById(id, (err, row) => {
         if (err) reject(err);
-        else resolve(result);
+        else resolve(row);
       });
     });
   });
 
+  ipcMain.handle('update-submission', async (event, submission) => {
+    return new Promise((resolve, reject) => {
+      db.updateSubmission(
+        submission.id,
+        submission.student_id,
+        submission.status,
+        submission.path,
+        submission.actual_output,
+        (err, changes) => {
+          if (err) reject(err);
+          else resolve(changes);
+        }
+      );
+    });
+  });
+  
   ipcMain.handle('get-test-config-by-project-id', async (event, projectId) => {
     return new Promise((resolve, reject) => {
       db.getTestConfigByProjectId(projectId, (err, row) => {
@@ -258,35 +289,35 @@ app.whenReady().then(() => {
     });
   });
   
-ipcMain.handle('get-project-files', async (event, projectId) => {
-  return new Promise((resolve, reject) => {
-    db.getConfigurationByProjectId(projectId, (err, config) => {
-      if (err || !config) return reject(err || new Error("Config not found"));
+  ipcMain.handle('get-project-files', async (event, projectId) => {
+    return new Promise((resolve, reject) => {
+      db.getConfigurationByProjectId(projectId, (err, config) => {
+        if (err || !config) return reject(err || new Error("Config not found"));
 
-      const extension = path.extname(config.source_code).toLowerCase(); 
+        const extension = path.extname(config.source_code).toLowerCase(); 
 
-      db.getSubmissionPathsByProject(projectId, (err2, rows) => {
-        if (err2 || !rows || rows.length === 0) return reject(err2 || new Error("No submissions found"));
+        db.getSubmissionPathsByProject(projectId, (err2, rows) => {
+          if (err2 || !rows || rows.length === 0) return reject(err2 || new Error("No submissions found"));
 
-        try {
-          const result = rows.map(row => {
-            const folderPath = row.path;
-            const structure = readDirectoryRecursive(folderPath, [extension]);
-            return {
-              name: path.basename(folderPath),
-              type: 'folder',
-              path: folderPath,
-              children: structure
-            };
-          });
-          resolve(result);
-        } catch (e) {
-          reject(e);
-        }
+          try {
+            const result = rows.map(row => {
+              const folderPath = row.path;
+              const structure = readDirectoryRecursive(folderPath, [extension]);
+              return {
+                name: path.basename(folderPath),
+                type: 'folder',
+                path: folderPath,
+                children: structure
+              };
+            });
+            resolve(result);
+          } catch (e) {
+            reject(e);
+          }
+        });
       });
     });
   });
-});
 
   ipcMain.handle('get-configuration-by-id', async (event, id) => {
     return new Promise((resolve, reject) => {
@@ -296,7 +327,6 @@ ipcMain.handle('get-project-files', async (event, projectId) => {
       });
     });
   });
-
 
   ipcMain.handle('read-file', async (event, filePath) => {
     try {
@@ -314,14 +344,14 @@ ipcMain.handle('get-project-files', async (event, projectId) => {
   });
   
   ipcMain.handle('save-file', async (event, filePath, content) => {
-  try {
-    fs.writeFileSync(filePath, content, 'utf-8');
-    return true;
-  } catch (err) {
-    console.error('Failed to save file:', err);
-    throw err;
-  }
-});
+    try {
+      fs.writeFileSync(filePath, content, 'utf-8');
+      return true;
+    } catch (err) {
+      console.error('Failed to save file:', err);
+      throw err;
+    }
+  });
 
   ipcMain.handle('show-save-dialog', async () => {
     const result = await dialog.showSaveDialog({
@@ -345,7 +375,28 @@ ipcMain.handle('get-project-files', async (event, projectId) => {
     return result.canceled ? null : result.filePath;
   });
 
-  
+  ipcMain.handle('process-project', async (event, projectId, submissionsPath, concurrency) => {
+    try {
+      console.log(`Processing project ${projectId} with submissions at ${submissionsPath}`);
+      const results = await processProject(projectId, submissionsPath, concurrency || 4);
+      return results;
+    } catch (err) {
+      console.error('Process project error:', err);
+      throw err;
+    }
+  });
+
+  ipcMain.handle('process-submission', async (event, submissionId, configId) => {
+    try {
+      console.log(`Processing submission ${submissionId}`);
+      const result = await processSubmission(submissionId, configId);
+      return result;
+    } catch (err) {
+      console.error('Process submission error:', err);
+      throw err;
+    }
+  });
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

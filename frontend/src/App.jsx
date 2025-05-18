@@ -13,6 +13,7 @@ function App() {
   const [selectedLanguage, setSelectedLanguage] = useState('Java') // Can be null for 'new' config
   const [key, setKey] = useState(0) // For view transitions
   const [showOpenModal, setShowOpenModal] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState('idle'); // 'idle', 'processing', 'complete', 'error'
 
   // Force dark mode
   useEffect(() => {
@@ -42,26 +43,37 @@ function App() {
     setSelectedLanguage(null); // Set language to null to indicate a new config
     switchView('config');
   };
+  
   // Handler for project creation
   const [projectId, setProjectId] = useState(null);
   const onCreateProject = async ({ project, testConfig }) => {
     try {
-      const newProjectId = await window.electron.addProject(project);
-      setProjectId(newProjectId); // Use setState instead of assignment
+      setProcessingStatus('processing');
       
+      // Step 1: Create the project and get its ID
+      const newProjectId = await window.electron.addProject(project);
+      setProjectId(newProjectId);
+      
+      // Step 2: Add test configuration
       await window.electron.addTestConfig(newProjectId, testConfig);
-      await window.electron.extractSubmissions(newProjectId, project.submissions_path);
-      await window.electron.compileSubmissions(newProjectId);
-      await window.electron.runSubmissions(newProjectId);
-      await window.electron.compareOutputs(newProjectId);
-  
-      console.log("Project Handled.");
+      
+      // Step 3: Process the entire project using Processor.js
+      const concurrency = 4; // Can be adjusted based on system capabilities
+      const results = await window.electron.processProject(
+        newProjectId, 
+        project.submissions_path, 
+        concurrency
+      );
+      
+      console.log("Project processing complete:", results);
       console.log("Project ID:", newProjectId);
+      
+      setProcessingStatus('complete');
       switchView('reports');
-  
     } catch (err) {
-      console.error("Error while project creation:", err);
-      alert("An error occured: " + err.message);
+      console.error("Error while processing project:", err);
+      setProcessingStatus('error');
+      alert("An error occurred: " + err.message);
     }
   };
   
@@ -92,7 +104,6 @@ function App() {
       alert("Could not load project.");
     }
   };
-  
 
   // Render the appropriate view based on activeView state
   const renderView = () => {
@@ -108,11 +119,12 @@ function App() {
                  onEditLang={onEditLanguage}
                  onCreateProject={onCreateProject}
                  onNewLangConfig={onNewLanguageConfig} // Pass the new handler
+                 processingStatus={processingStatus}
                />
       case 'reports':
         return <ReportsView projectId={projectId}/>
       case 'fileExplorer':
-  return <FileExplorer projectId={projectId} />
+        return <FileExplorer projectId={projectId} />
       default:
         return <ReportsView />
     }
@@ -120,9 +132,10 @@ function App() {
 
   return (
     <div className="flex flex-col h-screen bg-[#121212] text-gray-200">
-      <MenuBar onNewProject={openNewProject}
-      onOpenProject={() => setShowOpenModal(true)}
-        />
+      <MenuBar 
+        onNewProject={openNewProject}
+        onOpenProject={() => setShowOpenModal(true)}
+      />
       
       <div className="flex flex-1 overflow-hidden">
         {activeView !== 'project' && activeView !== 'config' && (
@@ -139,12 +152,11 @@ function App() {
       </div>
 
       {showOpenModal && (
-    <OpenProject
-      onSelectProject={onSelectExistingProject}
-      onClose={() => setShowOpenModal(false)}
-    />
-    )} 
-
+        <OpenProject
+          onSelectProject={onSelectExistingProject}
+          onClose={() => setShowOpenModal(false)}
+        />
+      )} 
     </div>
   )
 }
