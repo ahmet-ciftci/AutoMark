@@ -7,7 +7,9 @@ const ProjectCreation = ({
   onEditLang,
   formData,
   setFormData,
-  initialFormData 
+  initialFormData,
+  isEditing, // Add isEditing prop
+  onCancel // Add onCancel prop
 }) => {
   const [showLanguages, setShowLanguages] = useState(false)
   const [configurations, setConfigurations] = useState([])
@@ -229,6 +231,9 @@ const ProjectCreation = ({
 
   const onCancelProject = () => {
     setFormData(initialFormData); // Reset to initial state provided by App.jsx
+    if (onCancel) { // Use the new onCancel prop
+      onCancel();
+    }
   }
 
   const handleCreateProject = () => {
@@ -254,7 +259,7 @@ const ProjectCreation = ({
       project: projectData,
       testConfig: testConfigData,
     }
-
+    console.log('ProjectCreation.jsx: handleCreateProject called with payload:', projectPayload); // Added console log
     onCreateProject(projectPayload)
   }
 
@@ -262,7 +267,9 @@ const ProjectCreation = ({
     <>
 
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-8 text-gray-200">Create New Project</h1>
+      <h1 className="text-2xl font-bold mb-8 text-gray-200">
+        {isEditing ? 'Edit Project' : 'Create New Project'}
+      </h1>
 
       <div className="space-y-6">
         <div className="card">
@@ -677,8 +684,8 @@ const ProjectCreation = ({
             Cancel
           </button>
           <button onClick={handleCreateProject} className="btn-primary">
-            <FaPlus className="mr-2" />
-            Create Project
+            {isEditing ? <FaPencilAlt className="mr-2" /> : <FaPlus className="mr-2" />}
+            {isEditing ? 'Update Project' : 'Create Project'}
           </button>
         </div>
       </div>

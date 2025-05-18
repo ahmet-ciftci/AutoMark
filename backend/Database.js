@@ -81,7 +81,11 @@ function getProjects(callback) {
 function updateProject(id, name, configId, submissionsPath, callback) {
   const query = `UPDATE Projects SET name = ?, config_id = ?, submissions_path = ? WHERE id = ?`;
   db.run(query, [name, configId, submissionsPath, id], function (err) {
-    callback(err, this.changes);
+    // Ensure this.changes is correctly passed or handled if err occurs
+    if (err) {
+      return callback(err);
+    }
+    callback(null, this.changes);
   });
 }
 
@@ -168,14 +172,22 @@ function getTestConfigs(callback) {
 function updateTestConfig(id, projectId, inputMethod, input, outputMethod, expectedOutput, callback) {
   const query = `UPDATE TestConfig SET project_id = ?, input_method = ?, input = ?, output_method = ?, expected_output = ? WHERE id = ?`;
   db.run(query, [projectId, inputMethod, input, outputMethod, expectedOutput, id], function (err) {
-    callback(err, this.changes);
+    // Ensure this.changes is correctly passed or handled if err occurs
+    if (err) {
+      return callback(err);
+    }
+    callback(null, this.changes);
   });
 }
 
 function deleteTestConfig(id, callback) {
   const query = `DELETE FROM TestConfig WHERE id = ?`;
   db.run(query, [id], function (err) {
-    callback(err, this.changes);
+    // Ensure this.changes is correctly passed or handled if err occurs
+    if (err) {
+      return callback(err);
+    }
+    callback(null, this.changes);
   });
 }
 

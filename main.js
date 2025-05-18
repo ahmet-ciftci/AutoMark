@@ -255,6 +255,33 @@ app.whenReady().then(() => {
     });
   });
   
+  // Add this new handler for updating projects
+  ipcMain.handle('update-project', async (event, projectId, name, configId, submissionsPath) => {
+    return new Promise((resolve, reject) => {
+      db.updateProject(projectId, name, configId, submissionsPath, (err, changes) => {
+        if (err) {
+          console.error('Error updating project in main.js:', err);
+          reject(err);
+        } else {
+          resolve(changes);
+        }
+      });
+    });
+  });
+
+  // Add this new handler for deleting test configs
+  ipcMain.handle('delete-test-config', async (event, testConfigId) => {
+    return new Promise((resolve, reject) => {
+      db.deleteTestConfig(testConfigId, (err, changes) => {
+        if (err) {
+          console.error('Error deleting test config in main.js:', err);
+          reject(err);
+        } else {
+          resolve(changes);
+        }
+      });
+    });
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

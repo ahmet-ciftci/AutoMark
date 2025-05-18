@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
-import { FaFile, FaEdit, FaEye, FaQuestionCircle } from 'react-icons/fa'
+import { FaFile, FaEdit, FaEye, FaQuestionCircle, FaHome } from 'react-icons/fa'
 
-const MenuBar = ({ onNewProject = () => {}, onOpenProject = () => {} }) => {
+const MenuBar = ({ onNewProject = () => {}, onOpenProject = () => {}, onGoHome = () => {} }) => {
   const [openMenu, setOpenMenu] = useState(null)
   const menuRef = useRef(null)
   
@@ -39,10 +39,25 @@ const MenuBar = ({ onNewProject = () => {}, onOpenProject = () => {} }) => {
     onNewProject()
     closeMenu()
   }
+
+  const handleGoHome = () => {
+    onGoHome();
+    closeMenu();
+  }
   
   return (
     <div ref={menuRef} className="bg-[#121212] text-gray-200 h-12 flex items-center px-4 w-full border-b border-[#333] shadow-sm">
       <div className="flex gap-1">
+        {/* Home Button */}
+        <button 
+          onClick={handleGoHome}
+          className={`menu-bar-item flex items-center gap-2`}
+          title="Go to Welcome Screen"
+        >
+          <FaHome className="text-sm" />
+          <span>Home</span>
+        </button>
+
         <div className="relative">
           <button 
             onClick={() => toggleMenu('file')}
@@ -58,7 +73,7 @@ const MenuBar = ({ onNewProject = () => {}, onOpenProject = () => {} }) => {
                   <span className="menu-item-text">New Project</span>
                   <span className="menu-item-shortcut">Ctrl+N</span>
                 </div>
-<div className="menu-item group" onClick={() => { onOpenProject(); closeMenu(); }}>
+                <div className="menu-item group" onClick={() => { onOpenProject(); closeMenu(); }}>
                   <span className="menu-item-text">Open Project</span>
                   <span className="menu-item-shortcut">Ctrl+O</span>
                 </div>
