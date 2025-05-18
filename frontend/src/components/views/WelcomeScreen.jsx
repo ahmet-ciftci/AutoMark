@@ -1,22 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { FaCog, FaPlus, FaFolderOpen } from 'react-icons/fa';
+import { FaCog, FaPlus, FaFolderOpen, FaTrash } from 'react-icons/fa'; // Added FaTrash
 
 const WelcomeScreen = ({ onOpenProject, onEditProject, onNewProjectClick }) => {
   const [projects, setProjects] = useState([]);
 
-  useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        const fetchedProjects = await window.electron.getAllProjects();
-        setProjects(fetchedProjects || []);
-      } catch (err) {
-        console.error("Failed to fetch projects:", err);
-        setProjects([]);
-      }
-    };
+  const fetchProjects = async () => { // Extracted fetchProjects to be callable
+    try {
+      const fetchedProjects = await window.electron.getAllProjects();
+      setProjects(fetchedProjects || []);
+    } catch (err) {
+      console.error("Failed to fetch projects:", err);
+      setProjects([]);
+    }
+  };
 
+  useEffect(() => {
     fetchProjects();
   }, []);
+
+  const handleDeleteProject = async (projectId, projectName) => { // Added projectName for the confirmation dialog
+    // Show a confirmation dialog
+    if (window.confirm(`Are you sure you want to delete the project "${projectName}"? This action cannot be undone.`)) {
+      try {
+        await window.electron.deleteProject(projectId);
+        // Refresh the project list after deletion
+        fetchProjects(); 
+      } catch (err) {
+        console.error("Failed to delete project:", err);
+        // Optionally, show an error message to the user
+        alert(`Failed to delete project: ${err.message || 'Unknown error'}`); // Added an alert for user feedback
+      }
+    }
+  };
 
   return (
     <div className="min-h-screen text-gray-100 p-8 selection:bg-primary-500 selection:text-white">
@@ -69,16 +84,28 @@ const WelcomeScreen = ({ onOpenProject, onEditProject, onNewProjectClick }) => {
                     >
                       {project.name}
                     </h3>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation(); // Prevent card click when clicking settings
-                        onEditProject(project.id);
-                      }}
-                      className="text-gray-400 hover:text-primary-300 bg-transparent hover:bg-gray-700/60 p-1.5 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-opacity-75 flex-shrink-0"
-                      title="Project Settings"
-                    >
-                      <FaCog className="w-5 h-5" />
-                    </button>
+                    <div className="flex items-center"> {/* Wrapper for buttons */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent card click when clicking settings
+                          onEditProject(project.id);
+                        }}
+                        className="text-gray-400 hover:text-primary-300 bg-transparent hover:bg-gray-700/60 p-1.5 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-opacity-75 flex-shrink-0 mr-2" // Added mr-2 for spacing
+                        title="Project Settings"
+                      >
+                        <FaCog className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent card click
+                          handleDeleteProject(project.id, project.name); // Pass project.name to the handler
+                        }}
+                        className="text-gray-400 hover:text-red-500 bg-transparent hover:bg-gray-700/60 p-1.5 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75 flex-shrink-0"
+                        title="Delete Project"
+                      >
+                        <FaTrash className="w-5 h-5" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Spacer to push chevron to the bottom */}

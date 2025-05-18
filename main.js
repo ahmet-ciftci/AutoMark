@@ -283,6 +283,20 @@ app.whenReady().then(() => {
     });
   });
 
+  // Add this new handler for deleting projects
+  ipcMain.handle('delete-project', async (event, projectId) => {
+    return new Promise((resolve, reject) => {
+      db.deleteProject(projectId, (err, changes) => {
+        if (err) {
+          console.error('Error deleting project in main.js:', err);
+          reject(err);
+        } else {
+          resolve(changes);
+        }
+      });
+    });
+  });
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
