@@ -41,7 +41,7 @@ const MenuBar = ({ onNewProject = () => {}, onOpenProject = () => {}, helpConten
   return (
     <div 
       ref={menuRef} 
-      className="bg-gradient-to-r from-dark-bg via-dark-surface to-dark-bg text-gray-200 h-14 flex items-center px-4 w-full
+      className="bg-dark-bg text-gray-200 h-14 flex items-center px-4 w-full
                 border-b border-dark-border relative z-10 shadow-md"
     >
       {/* Gradient line at the bottom */}
