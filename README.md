@@ -35,11 +35,11 @@
 
 ### Download the App
 
-You can download the latest release of AutoMark as a desktop application:
+You can download the latest release of AutoMark as a setup file:
 
 [Download from GitHub Releases](https://github.com/ahmet-ciftci/AutoMark/releases)
 
-Just download the `.exe` file and run it directly — no installation required.
+Run AutoMark_Setup.exe and follow the installation wizard. 
 
 ---
 
@@ -141,30 +141,12 @@ AutoMark will:
 - Navigate to the **File Explorer** tab.
 - View extracted student folders and source files.
 
-### 5. File and Help Menu
-> Handle project operations.
+### 5. Help Menu
+> Information about using program.
 
 <div align="center">
   <img src="assets/file .png" width="200" style="box-shadow: 0 4px 12px rgba(0,0,0,0.2); border-radius: 8px;" />
 </div>
-
-- **New Project** (Ctrl+N):  
-  Starts a fresh project from scratch.
-
-- **Open Project** (Ctrl+O):  
-  Allows you to reopen a previously saved project (if project saving is implemented).
-
-- **Save Project** (Ctrl+S):  
-  Saves the current project state.
-
-- **Save Project As** (Ctrl+Shift+S):  
-  Saves the current project under a new name or location.
-
-- **Close Window** (Alt+F4):  
-  Closes the application window.
-
-- **Exit**:  
-  Quits the application.
 
 - **Help**:  
   Access the inbuilt Help menu for detailed instructions on using the application.
