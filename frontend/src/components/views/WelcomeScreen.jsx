@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaCog, FaPlus, FaFolderOpen, FaTrash, FaChevronRight } from 'react-icons/fa'; // Removed FaRegClock
+import { FaPlus, FaFolderOpen, FaTrash, FaChevronRight, FaPencilAlt } from 'react-icons/fa'; // Removed FaRegClock and FaCog, added FaPencilAlt
 
 const WelcomeScreen = ({ onOpenProject, onEditProject, onNewProjectClick }) => {
   const [projects, setProjects] = useState([]);
@@ -105,9 +105,9 @@ const WelcomeScreen = ({ onOpenProject, onEditProject, onNewProjectClick }) => {
                         }}
                         className="text-gray-400 hover:text-primary-300 bg-gray-800/50 hover:bg-gray-700/50 p-2 rounded-lg 
                                  transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-opacity-50"
-                        title="Project Settings"
+                        title="Edit Project"
                       >
-                        <FaCog className="w-4 h-4" />
+                        <FaPencilAlt className="w-4 h-4" />
                       </button>
                       <button
                         onClick={(e) => {
