@@ -13,6 +13,7 @@ const { getSubmissionPathsByProject } = require('./backend/Database.js');
 const { processProject, processSubmission } = require('./backend/Processor.js');
 
 let mainWindow;
+let splashWindow;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -32,8 +33,32 @@ function createWindow() {
   mainWindow.setMenu(null);
 }
 
+function createSplashWindow() {
+  splashWindow = new BrowserWindow({
+    width: 600,
+    height: 600,
+    transparent: true,
+    frame: false,
+    alwaysOnTop: true,
+    center: true,
+    resizable: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true
+    }
+  });
+  splashWindow.loadFile(path.join(__dirname, 'splash.html'));
+}
+
 app.whenReady().then(() => {
-  createWindow();
+  createSplashWindow();
+
+  ipcMain.on('splash-finished', () => {
+    if (splashWindow) splashWindow.close();
+    createWindow();
+  });
 
   db.initializeDatabase();
   

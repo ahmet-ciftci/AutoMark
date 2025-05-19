@@ -39,4 +39,5 @@ contextBridge.exposeInMainWorld('electron', {
   zoomIn: () => ipcRenderer.invoke('view-zoom-in'),
   zoomOut: () => ipcRenderer.invoke('view-zoom-out'),
   resetZoom: () => ipcRenderer.invoke('view-reset-zoom'),
+  splashFinished: () => ipcRenderer.send('splash-finished'),
 });
