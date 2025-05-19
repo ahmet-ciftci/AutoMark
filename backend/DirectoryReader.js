@@ -6,28 +6,72 @@ const path = require('path');
  * Filters out unwanted files like .exe, __MACOSX, .DS_Store, etc.
  */
 function readDirectoryRecursive(dirPath, allowedExtensions = []) {
-  if (!fs.existsSync(dirPath)) return [];
+  // Handle non-existent directories
+  if (!fs.existsSync(dirPath)) {
+    console.error(`Directory does not exist: ${dirPath}`);
+    return [];
+  }
 
-  const items = fs.readdirSync(dirPath)
-    .filter(name => {
-      const ext = path.extname(name).toLowerCase();
-      return !name.startsWith('__MACOSX') &&
-             !name.startsWith('.') &&
-             (allowedExtensions.length === 0 || allowedExtensions.includes(ext));
+  try {
+    // Handle permission issues or other problems with readdir
+    const items = fs.readdirSync(dirPath)
+      .filter(name => {
+        // Skip hidden files and directories
+        if (name.startsWith('.') || name.startsWith('__MACOSX')) {
+          return false;
+        }
+        
+        const ext = path.extname(name).toLowerCase();
+        // If no extensions specified, include all non-hidden files
+        if (allowedExtensions.length === 0) {
+          return true;
+        }
+        
+        // Otherwise only include files with the allowed extensions
+        return allowedExtensions.includes(ext);
+      });
+
+    return items.map(item => {
+      const fullPath = path.join(dirPath, item);
+      
+      try {
+        const stats = fs.statSync(fullPath);
+        const isDirectory = stats.isDirectory();
+        
+        // Skip empty directories by default
+        if (isDirectory) {
+          const children = readDirectoryRecursive(fullPath, allowedExtensions);
+          // Return folder entry with its children
+          return {
+            name: item,
+            type: 'folder',
+            path: fullPath,
+            children: children
+          };
+        } else {
+          // Return file entry
+          return {
+            name: item,
+            type: 'file',
+            path: fullPath,
+            children: []
+          };
+        }
+      } catch (err) {
+        console.error(`Error processing item ${fullPath}:`, err);
+        // Return partial information for files that can't be fully processed
+        return {
+          name: item + ' (Error)',
+          type: 'error',
+          path: fullPath,
+          children: []
+        };
+      }
     });
-
-  return items.map(item => {
-    const fullPath = path.join(dirPath, item);
-    const isDirectory = fs.statSync(fullPath).isDirectory();
-
-    return {
-      name: item,
-      type: isDirectory ? 'folder' : 'file',
-      path: fullPath,
-      children: isDirectory ? readDirectoryRecursive(fullPath, allowedExtensions) : []
-    };
-  });
+  } catch (err) {
+    console.error(`Error reading directory ${dirPath}:`, err);
+    return [];
+  }
 }
-
 
 module.exports = { readDirectoryRecursive };

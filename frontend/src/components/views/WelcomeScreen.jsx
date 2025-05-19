@@ -1,16 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { FaPlus, FaFolderOpen, FaTrash, FaChevronRight, FaPencilAlt } from 'react-icons/fa'; // Removed FaRegClock and FaCog, added FaPencilAlt
+import { FaPlus, FaFolderOpen, FaTrash, FaChevronRight, FaPencilAlt, FaExclamationCircle } from 'react-icons/fa';
 
 const WelcomeScreen = ({ onOpenProject, onEditProject, onNewProjectClick }) => {
   const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const fetchProjects = async () => { // Extracted fetchProjects to be callable
+  const fetchProjects = async () => {
+    setLoading(true);
+    setError(null);
+    
     try {
       const fetchedProjects = await window.electron.getAllProjects();
       setProjects(fetchedProjects || []);
+      setLoading(false);
     } catch (err) {
       console.error("Failed to fetch projects:", err);
+      setError(`Failed to load projects: ${err.message || "Unknown error"}`);
       setProjects([]);
+      setLoading(false);
     }
   };
 
@@ -18,7 +26,7 @@ const WelcomeScreen = ({ onOpenProject, onEditProject, onNewProjectClick }) => {
     fetchProjects();
   }, []);
 
-  const handleDeleteProject = async (projectId, projectName) => { // Added projectName for the confirmation dialog
+  const handleDeleteProject = async (projectId, projectName) => {
     // Show a confirmation dialog
     if (window.confirm(`Are you sure you want to delete the project "${projectName}"? This action cannot be undone.`)) {
       try {
@@ -28,7 +36,7 @@ const WelcomeScreen = ({ onOpenProject, onEditProject, onNewProjectClick }) => {
       } catch (err) {
         console.error("Failed to delete project:", err);
         // Optionally, show an error message to the user
-        alert(`Failed to delete project: ${err.message || 'Unknown error'}`); // Added an alert for user feedback
+        alert(`Failed to delete project: ${err.message || 'Unknown error'}`);
       }
     }
   };
@@ -56,7 +64,30 @@ const WelcomeScreen = ({ onOpenProject, onEditProject, onNewProjectClick }) => {
           </button>
         </header>
 
-        {projects.length === 0 && (
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mb-4"></div>
+            <p className="text-gray-400 text-lg">Loading projects...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center mt-10 py-16 px-8 rounded-xl shadow-2xl backdrop-blur-sm border border-red-700/50 transform transition-all duration-500 relative overflow-hidden">
+            <div className="relative z-10">
+              <FaExclamationCircle className="text-7xl mb-8 text-red-500 mx-auto" />
+              <h2 className="text-3xl font-semibold text-gray-100 mb-6">
+                Error Loading Projects
+              </h2>
+              <p className="text-gray-400 mb-10 text-xl max-w-lg mx-auto leading-relaxed">
+                {error}
+              </p>
+              <button 
+                onClick={fetchProjects} 
+                className="bg-primary-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-primary-600 transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        ) : projects.length === 0 ? (
           <div className="text-center mt-10 py-16 px-8 rounded-xl shadow-2xl backdrop-blur-sm border border-gray-700/50 transform transition-all duration-500 relative overflow-hidden">
             <div className="relative z-10">
               <FaFolderOpen className="text-7xl mb-8 text-primary-400 mx-auto" />
@@ -69,9 +100,7 @@ const WelcomeScreen = ({ onOpenProject, onEditProject, onNewProjectClick }) => {
               </p>
             </div>
           </div>
-        )}
-
-        {projects.length > 0 && (
+        ) : (
           <div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {projects.map((project) => (

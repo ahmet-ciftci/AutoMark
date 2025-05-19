@@ -145,8 +145,11 @@ app.whenReady().then(() => {
         config.output_method,
         config.expected_output,
         (err, id) => {
-          if (err) reject(err);
-          else resolve(id);
+          if (err) {
+            reject(err);
+          } else {
+            resolve(id); // Resolve with the new test config ID
+          }
         }
       );
     });
@@ -291,29 +294,65 @@ app.whenReady().then(() => {
   
   ipcMain.handle('get-project-files', async (event, projectId) => {
     return new Promise((resolve, reject) => {
-      db.getConfigurationByProjectId(projectId, (err, config) => {
-        if (err || !config) return reject(err || new Error("Config not found"));
-
-        const extension = path.extname(config.source_code).toLowerCase(); 
-
-        db.getSubmissionPathsByProject(projectId, (err2, rows) => {
-          if (err2 || !rows || rows.length === 0) return reject(err2 || new Error("No submissions found"));
-
-          try {
-            const result = rows.map(row => {
-              const folderPath = row.path;
-              const structure = readDirectoryRecursive(folderPath, [extension]);
-              return {
-                name: path.basename(folderPath),
-                type: 'folder',
-                path: folderPath,
-                children: structure
-              };
-            });
-            resolve(result);
-          } catch (e) {
-            reject(e);
+      if (!projectId) {
+        return reject(new Error("No project ID provided"));
+      }
+      
+      db.getProjectById(projectId, (err, project) => {
+        if (err || !project) {
+          return reject(err || new Error("Project not found"));
+        }
+        
+        db.getConfigurationByProjectId(projectId, (err, config) => {
+          if (err) return reject(err || new Error("Config not found"));
+          
+          // Default to all common source file extensions if no config or source code is specified
+          let extensions = ['.c', '.cpp', '.java', '.py', '.js', '.html', '.css'];
+          
+          if (config && config.source_code) {
+            // Get file extension(s) from source_code field
+            const sourceFiles = config.source_code.split(/\s+/);
+            extensions = sourceFiles
+              .map(file => path.extname(file).toLowerCase())
+              .filter(ext => ext); // Remove empty extensions
+              
+            // If no extensions found, use defaults
+            if (extensions.length === 0) {
+              extensions = ['.c', '.cpp', '.java', '.py', '.js', '.html', '.css'];
+            }
           }
+
+          db.getSubmissionPathsByProject(projectId, (err2, rows) => {
+            if (err2) return reject(err2);
+            
+            if (!rows || rows.length === 0) {
+              return reject(new Error("No submissions found for this project"));
+            }
+
+            try {
+              const result = rows
+                .filter(row => row.path && fs.existsSync(row.path)) // Filter out invalid paths
+                .map(row => {
+                  const folderPath = row.path;
+                  const structure = readDirectoryRecursive(folderPath, extensions);
+                  return {
+                    name: path.basename(folderPath),
+                    type: 'folder',
+                    path: folderPath,
+                    children: structure
+                  };
+                });
+                
+              if (result.length === 0) {
+                return reject(new Error("No valid submission folders found"));
+              }
+              
+              resolve(result);
+            } catch (e) {
+              console.error("Error building file structure:", e);
+              reject(e);
+            }
+          });
         });
       });
     });
@@ -321,13 +360,40 @@ app.whenReady().then(() => {
 
   ipcMain.handle('update-project', async (event, projectId, name, configId, submissionsPath) => {
     return new Promise((resolve, reject) => {
-      db.updateProject(projectId, name, configId, submissionsPath, (err, changes) => {
-        if (err) {
-          console.error('Error updating project in main.js:', err);
-          reject(err);
-        } else {
-          resolve(changes);
+      // First, delete existing submissions for the project
+      db.deleteSubmissionsByProjectId(projectId, (deleteErr, deleteChanges) => {
+        if (deleteErr) {
+          console.error('Failed to delete submissions before project update:', deleteErr);
+          return reject(deleteErr); // Stop the process if deletion fails
         }
+        console.log(`Successfully deleted ${deleteChanges} submissions for project ${projectId} before update.`);
+
+        // Then, update the project details
+        db.updateProject(projectId, name, configId, submissionsPath, (updateErr, updateChanges) => {
+          if (updateErr) {
+            console.error('Error updating project in main.js:', updateErr);
+            return reject(updateErr);
+          }
+          // After project update, re-extract and process submissions
+          // Assuming submissionsPath is up-to-date or re-confirmed by the user
+          if (submissionsPath) {
+            extractAndSaveSubmissions(submissionsPath, path.join(submissionsPath, '..', 'output'), projectId)
+              .then(() => {
+                console.log('Submissions re-extracted after project update.');
+                // Optionally, trigger re-processing of all submissions here if needed
+                // For example, by calling processProject or similar logic
+                resolve(updateChanges);
+              })
+              .catch(extractErr => {
+                console.error('Failed to re-extract submissions after project update:', extractErr);
+                // Decide if this error should cause a rejection
+                // For now, resolve the project update but log the extraction error
+                resolve(updateChanges); 
+              });
+          } else {
+            resolve(updateChanges); // Resolve if no submissions path to re-extract from
+          }
+        });
       });
     });
   });

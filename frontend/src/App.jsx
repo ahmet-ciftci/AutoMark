@@ -229,19 +229,38 @@ function App() {
 
   const onSelectExistingProject = async (projectIdToOpen) => {
     try {
+      if (!projectIdToOpen) {
+        console.error("Invalid project ID");
+        return;
+      }
+
       const project = await window.electron.getProjectById(projectIdToOpen);
+      
+      if (!project) {
+        console.error("Project not found:", projectIdToOpen);
+        alert("Could not load project. The project may have been deleted.");
+        return;
+      }
+      
       console.log("Selected project:", project);
   
+      // Update the projectId state which is used by ReportsView and FileExplorer
       setProjectId(projectIdToOpen);
-      setEditingProjectId(null); // Clear editing state
-      setProjectCreationFormData(initialProjectCreationFormData); // Reset form
-
-      setProjectId(projectId);
+      
+      // Clear editing state
+      setEditingProjectId(null);
+      
+      // Reset form data
+      setProjectCreationFormData(initialProjectCreationFormData);
+      
+      // Close modal if it's open
       setShowOpenModal(false);
+      
+      // Switch view to reports
       switchView('reports');
     } catch (err) {
       console.error("Error loading project:", err);
-      alert("Could not load project.");
+      alert(`Error loading project: ${err.message || "Unknown error"}`);
     }
   };
 

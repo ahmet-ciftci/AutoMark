@@ -220,6 +220,13 @@ function deleteSubmission(id, callback) {
   });
 }
 
+function deleteSubmissionsByProjectId(projectId, callback) {
+  const query = `DELETE FROM Submissions WHERE project_id = ?`;
+  db.run(query, [projectId], function (err) {
+    callback(err, this.changes);
+  });
+}
+
 // Other Methods
 function updateSubmissionStatus(id, status, errorMessage = null, callback) {
   let query;
@@ -301,6 +308,13 @@ function submissionExists(projectId, studentId, callback) {
   });
 }
 
+function getSubmissionById(id, callback) {
+  const query = `SELECT * FROM Submissions WHERE id = ?`;
+  db.get(query, [id], (err, row) => {
+    callback(err, row);
+  });
+}
+
 async function getProjectById(projectId, callback) {
   const query = `SELECT * FROM Projects WHERE id = ?`;
   db.get(query, [projectId], (err, row) => {
@@ -361,17 +375,17 @@ module.exports = {
   getSubmissions,
   updateSubmission,
   deleteSubmission,
+  deleteSubmissionsByProjectId,
   updateSubmissionStatus,
   getConfigurationByProjectId,
   getSubmissionsAndTestConfig,
   updateActualOutput,
-  closeDatabase,
-  submissionExists,
   getConfigurationByName,
-  getProjectById,
+  getProjectById, 
+  getSubmissionById,
   getTestConfigByProjectId,
   getAllProjects,
   getSubmissionPathsByProject,
-  getConfigurationById,
-  updateSubmissionError,
+  submissionExists,
+  closeDatabase,
 };
