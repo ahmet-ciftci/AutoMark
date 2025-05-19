@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { FaFolder, FaChevronDown, FaPencilAlt, FaFileImport, FaFileExport, FaPlus, FaCheck, FaTerminal, FaFileAlt, FaFileCode, FaKeyboard, FaTrash } from 'react-icons/fa'
+import { FaFolder, FaChevronDown, FaPencilAlt, FaFileExport, FaFileImport, FaPlus, FaCheck, FaTerminal, FaFileAlt, FaFileCode, FaKeyboard, FaTrash } from 'react-icons/fa'
 
 const ProjectCreation = ({
   onCreateProject, 
@@ -501,24 +501,26 @@ const ProjectCreation = ({
                     <FaTrash className="mr-2 text-xs" /> Delete
                   </button>
 
-                  <button
-                    onClick={handleImportConfig}
-                    className="btn-outline hover:border-primary-500 hover:bg-primary-700/20 hover:text-primary-400"
-                    title="Import configuration"
-                  >
-                    <FaFileImport className="mr-2 text-xs" />
-                    Import
-                  </button>
-
-                  <button
-                    onClick={handleExportConfig}
-                    className="btn-outline hover:border-primary-500 hover:bg-primary-700/20 hover:text-primary-400"
-                    title="Export configuration"
-                    disabled={!formData.selectedConfigId}  // Changed from selectedConfigId
-                  >
-                    <FaFileExport className="mr-2 text-xs" />
-                    Export
-                  </button>
+                  {/* Group Export and Import on the same line */}
+                  <div className="col-span-2 flex gap-3">
+                    <button
+                      onClick={handleExportConfig}
+                      className="btn-outline hover:border-primary-500 hover:bg-primary-700/20 hover:text-primary-400"
+                      title="Export configuration"
+                      disabled={!formData.selectedConfigId}
+                    >
+                      <FaFileExport className="mr-2 text-xs" />
+                      Export
+                    </button>
+                    <button
+                      onClick={handleImportConfig}
+                      className="btn-outline hover:border-primary-500 hover:bg-primary-700/20 hover:text-primary-400"
+                      title="Import configuration"
+                    >
+                      <FaFileImport className="mr-2 text-xs" />
+                      Import
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
