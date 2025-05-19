@@ -4,7 +4,8 @@ const path = require("path");
 
 const {
   updateSubmissionStatus,
-  updateActualOutput
+  updateActualOutput,
+  updateSubmissionError,
 } = require("./Database");
 
 function runSubmission(submission, config, callback) {

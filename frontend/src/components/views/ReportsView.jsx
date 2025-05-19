@@ -240,32 +240,49 @@ const ReportsView = ({projectId}) => {
         <div className="card">
           <div className="card-header">SUBMISSIONS</div>
           <div className="p-2">
-            {submissions.map(sub => (
-              <div
-                key={sub.submission_id}
-                className={`flex justify-between p-2 cursor-pointer rounded hover:bg-dark-hover text-gray-200 ${
-                  selectedSubmission === sub.submission_id ? 'bg-dark-hover' : ''
-                }`}
-                onClick={() => setSelectedSubmission(sub.submission_id)}
-              >
-                <span>Student {sub.student_id}</span>
-                <span className={
-                  sub.status === 'compile_error' || sub.status === 'runtime_error' || sub.status === 'time_exceeded'
-                    ? getStatusColorClass(sub.status) 
-                    : getScoreColorClass(sub.score)
-                }>
-                  {sub.status === 'compile_error' 
-                    ? "Compile Error" 
-                    : sub.status === 'runtime_error' 
-                      ? "Runtime Error" 
-                      : sub.status === 'time_exceeded'
-                        ? "Time Limit Exceeded"
-                        : sub.score 
-                          ? `${sub.score}%` 
-                          : sub.status || 'Pending'}
-                </span>
-              </div>
-            ))}
+            {submissions.map(sub => {
+              let displayScoreText;
+              let scoreForColoring;
+
+              if (sub.actual_output != null) { // Check if actual_output exists
+                const studentOutputLines = sub.actual_output.split('\n').map(line => line.trim());
+                const subTotalLines = studentOutputLines.length;
+                let subMatches = 0;
+
+                // Compare with expectedOutput if available
+                if (expectedOutput && expectedOutput.length > 0) {
+                  studentOutputLines.forEach((studentLine, index) => {
+                    if (index < expectedOutput.length) {
+                      if (studentLine === expectedOutput[index].value) {
+                        subMatches++;
+                      }
+                    }
+                  });
+                }
+                
+                const calculatedScore = subTotalLines > 0 ? Math.round((subMatches / subTotalLines) * 100) : 0;
+                displayScoreText = `${calculatedScore}%`;
+                scoreForColoring = calculatedScore;
+              } else {
+                displayScoreText = sub.status || 'Pending';
+                scoreForColoring = undefined; // Let getScoreColorClass handle this as gray
+              }
+
+              return (
+                <div
+                  key={sub.submission_id}
+                  className={`flex justify-between p-2 cursor-pointer rounded hover:bg-dark-hover text-gray-200 ${
+                    selectedSubmission === sub.submission_id ? 'bg-dark-hover' : ''
+                  }`}
+                  onClick={() => setSelectedSubmission(sub.submission_id)}
+                >
+                  <span>Student {sub.student_id}</span>
+                  <span className={getScoreColorClass(scoreForColoring)}>
+                    {displayScoreText}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
   
@@ -358,41 +375,24 @@ const ReportsView = ({projectId}) => {
       {/* Summary Footer */}
       <div className="card-footer mt-2 sticky bottom-0">
         <div className="flex justify-end space-x-6">
-          {!hasError && (
-            <>
-              <div>
-                <span className="text-gray-400">Matches:</span>
-                <span className={`ml-2 font-medium ${currentMatches === currentTotal && currentTotal > 0 ? 'text-green-500' : 'text-white'}`}>
-                  {currentMatches}/{currentTotal}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-400">Score:</span>
-                <span className={`ml-2 ${
-                  currentTotal > 0 && Math.round((currentMatches / currentTotal) * 100) >= 70 
-                    ? 'text-green-500' 
-                    : 'text-white'
-                }`}>
-                  {currentTotal > 0
-                    ? Math.round((currentMatches / currentTotal) * 100) + '%'
-                    : '0%'}
-                </span>
-              </div>
-            </>
-          )}
-          {hasError && (
-            <div>
-              <span className={`font-medium ${
-                errorType === "Compilation Error" 
-                  ? "text-red-500" 
-                  : errorType === "Runtime Error" 
-                    ? "text-orange-500"
-                    : "text-yellow-500"
-              }`}>
-                {errorType} detected
-              </span>
-            </div>
-          )}
+          <div>
+            <span className="text-gray-400">Matches:</span>
+            <span className="ml-2 font-medium text-white">
+              {currentMatches}/{currentTotal}
+            </span>
+          </div>
+          <div>
+            <span className="text-gray-400">Score:</span>
+            <span className={`ml-2 ${
+              currentTotal > 0
+                ? getScoreColorClass(Math.round((currentMatches / currentTotal) * 100))
+                : 'text-gray-400' 
+            }`}>
+              {currentTotal > 0
+                ? Math.round((currentMatches / currentTotal) * 100) + '%'
+                : '0%'}
+            </span>
+          </div>
         </div>
       </div>
 

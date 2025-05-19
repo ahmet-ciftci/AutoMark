@@ -4,7 +4,8 @@ const fs = require("fs");
 
 const {
   getConfigurationByProjectId,
-  updateSubmissionStatus
+  updateSubmissionStatus,
+  updateSubmissionError
 } = require("./Database");
 
 function compileSubmission(submission, config, callback) {
@@ -13,10 +14,10 @@ function compileSubmission(submission, config, callback) {
   return new Promise((resolve) => {
     const sourceFiles = config.source_code
       ? config.source_code
-          .split(/\s+/)
-          .map(f => path.join(submission.path, f))
-          .map(f => `"${f}"`)
-          .join(" ")
+        .split(/\s+/)
+        .map(f => path.join(submission.path, f))
+        .map(f => `"${f}"`)
+        .join(" ")
       : "";
 
     // Check that all source files exist

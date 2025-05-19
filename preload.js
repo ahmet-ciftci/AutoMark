@@ -30,4 +30,7 @@ contextBridge.exposeInMainWorld('electron', {
     ipcRenderer.invoke('process-project', projectId, submissionsPath, concurrency),
   processSubmission: (submissionId, configId) => 
     ipcRenderer.invoke('process-submission', submissionId, configId),
+  updateProject: (projectId, name, configId, submissionsPath) => ipcRenderer.invoke('update-project', projectId, name, configId, submissionsPath),
+  deleteTestConfig: (testConfigId) => ipcRenderer.invoke('delete-test-config', testConfigId),
+  deleteProject: (projectId) => ipcRenderer.invoke('delete-project', projectId),
 });

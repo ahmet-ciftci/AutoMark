@@ -1,58 +1,19 @@
 import { useState, useEffect, useRef } from 'react'
 import { FaFolder, FaChevronDown, FaPencilAlt, FaFileImport, FaFileExport, FaPlus, FaCheck, FaTerminal, FaFileAlt, FaFileCode, FaKeyboard, FaTrash } from 'react-icons/fa'
-import ConfigEditor from './ConfigEditor';
 
-const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
-  const [project_name, setProjectName] = useState('')
-  const [submissions_directory, setSubmissionsDirectory] = useState('')
-  const [selectedLanguage, setSelectedLanguage] = useState('')
-  const [selectedConfigId, setSelectedConfigId] = useState(null)
+const ProjectCreation = ({
+  onCreateProject, 
+  onNewLangConfig, 
+  onEditLang,
+  formData,
+  setFormData,
+  initialFormData,
+  isEditing, // Add isEditing prop
+  onCancel // Add onCancel prop
+}) => {
   const [showLanguages, setShowLanguages] = useState(false)
   const [configurations, setConfigurations] = useState([])
 
-  const [input_generation_method, setInputMethod] = useState('manual')
-  const [input, setInput] = useState('')
-  const [expected_output_generation_method, setExpectedOutputMethod] = useState('manual')
-  const [expected_output, setExpectedOutput] = useState('')
-
-  const [manualInput, setManualInput] = useState('')
-  const [inputScriptCommand, setInputScriptCommand] = useState('')
-  const [inputScriptFilePath, setInputScriptFilePath] = useState('')
-  const [combinedInputScriptCommand, setCombinedInputScriptCommand] = useState('')
-  const [inputFilePath, setInputFilePath] = useState('')
-
-  const [manualExpectedOutput, setManualExpectedOutput] = useState('')
-  const [expectedOutputScriptCommand, setExpectedOutputScriptCommand] = useState('')
-  const [expectedOutputScriptFilePath, setExpectedOutputScriptFilePath] = useState('')
-  const [combinedExpectedOutputScriptCommand, setCombinedExpectedOutputScriptCommand] = useState('')
-  const [expectedOutputFilePath, setExpectedOutputFilePath] = useState('')
-
-  const [isEditing, setIsEditing] = useState(false);
-  
-  const handleEditLang = () => {
-    if (!selectedLanguage) return;
-    // Call the parent handler instead of setting local state
-    if (onEditLang) {
-      onEditLang(selectedLanguage);
-    }
-  };
-  
-  const handleDeleteConfig = async () => {
-    if (!selectedConfigId) return
-    if (!window.confirm('Delete this configuration?')) return
-    try {
-      await window.electron.deleteConfig(selectedConfigId)
-      // refresh list and clear selection
-      const configs = await window.electron.getConfigurations()
-      setConfigurations(configs)
-      setSelectedLanguage('')
-      setSelectedConfigId(null)
-      setShowLanguages(false)
-    } catch (err) {
-      console.error('Failed to delete config:', err)
-    }
-  };
-  
   const languageDropdownRef = useRef(null)
 
   const [testPlaceholders, setTestPlaceholders] = useState({
@@ -67,28 +28,32 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
   })
 
   useEffect(() => {
-    if (inputScriptCommand && inputScriptFilePath) {
-      setCombinedInputScriptCommand(`${inputScriptCommand} ${inputScriptFilePath}`)
-    } else if (inputScriptCommand) {
-      setCombinedInputScriptCommand(inputScriptCommand)
-    } else if (inputScriptFilePath) {
-      setCombinedInputScriptCommand(inputScriptFilePath)
-    } else {
-      setCombinedInputScriptCommand('')
+    let newCombinedCommand = '';
+    if (formData.inputScriptCommand && formData.inputScriptFilePath) {
+      newCombinedCommand = `${formData.inputScriptCommand} ${formData.inputScriptFilePath}`;
+    } else if (formData.inputScriptCommand) {
+      newCombinedCommand = formData.inputScriptCommand;
+    } else if (formData.inputScriptFilePath) {
+      newCombinedCommand = formData.inputScriptFilePath;
     }
-  }, [inputScriptCommand, inputScriptFilePath])
+    if (newCombinedCommand !== formData.combinedInputScriptCommand) {
+      setFormData(prev => ({ ...prev, combinedInputScriptCommand: newCombinedCommand }));
+    }
+  }, [formData.inputScriptCommand, formData.inputScriptFilePath, formData.combinedInputScriptCommand, setFormData]);
 
   useEffect(() => {
-    if (expectedOutputScriptCommand && expectedOutputScriptFilePath) {
-      setCombinedExpectedOutputScriptCommand(`${expectedOutputScriptCommand} ${expectedOutputScriptFilePath}`)
-    } else if (expectedOutputScriptCommand) {
-      setCombinedExpectedOutputScriptCommand(expectedOutputScriptCommand)
-    } else if (expectedOutputScriptFilePath) {
-      setCombinedExpectedOutputScriptCommand(expectedOutputScriptFilePath)
-    } else {
-      setCombinedExpectedOutputScriptCommand('')
+    let newCombinedCommand = '';
+    if (formData.expectedOutputScriptCommand && formData.expectedOutputScriptFilePath) {
+      newCombinedCommand = `${formData.expectedOutputScriptCommand} ${formData.expectedOutputScriptFilePath}`;
+    } else if (formData.expectedOutputScriptCommand) {
+      newCombinedCommand = formData.expectedOutputScriptCommand;
+    } else if (formData.expectedOutputScriptFilePath) {
+      newCombinedCommand = formData.expectedOutputScriptFilePath;
     }
-  }, [expectedOutputScriptCommand, expectedOutputScriptFilePath])
+    if (newCombinedCommand !== formData.combinedExpectedOutputScriptCommand) {
+      setFormData(prev => ({ ...prev, combinedExpectedOutputScriptCommand: newCombinedCommand }));
+    }
+  }, [formData.expectedOutputScriptCommand, formData.expectedOutputScriptFilePath, formData.combinedExpectedOutputScriptCommand, setFormData]);
 
 
   //CONFIGURATION DROPDOWN
@@ -106,10 +71,9 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
   }, []);
 
   const onSaveConfig = (updatedConfig) => {
-    setSelectedLanguage(updatedConfig.config_name); 
-    setSelectedConfigId(updatedConfig.id);          
+    setFormData(prev => ({ ...prev, selectedLanguage: updatedConfig.config_name, selectedConfigId: updatedConfig.id }));
     setShowLanguages(false);                        
-    setIsEditing(false); 
+    // setIsEditing(false); // Not needed as per current flow
     
     window.electron.getConfigurations().then((configs) => {
       setConfigurations(configs);
@@ -117,64 +81,93 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
   };
   
   
-  
 
-  useEffect(() => {
-    setManualInput('')
-    setInputScriptCommand('')
-    setInputScriptFilePath('')
-    setInputFilePath('')
-    setManualExpectedOutput('')
-    setExpectedOutputScriptCommand('')
-    setExpectedOutputScriptFilePath('')
-    setExpectedOutputFilePath('')
-    setInput('')
-    setExpectedOutput('')
-  }, [selectedLanguage])
+  // useEffect(() => {}, [formData.selectedLanguage])
 
   useEffect(() => {
     let finalInputVal = ''
-    switch (input_generation_method) {
+    switch (formData.input_generation_method) {
       case 'manual':
-        finalInputVal = manualInput
+        finalInputVal = formData.manualInput
         break
       case 'script':
-        finalInputVal = combinedInputScriptCommand
+        finalInputVal = formData.combinedInputScriptCommand
         break
       case 'file':
-        finalInputVal = inputFilePath
+        finalInputVal = formData.inputFilePath
         break
       default:
         finalInputVal = ''
     }
-    setInput(finalInputVal)
-  }, [input_generation_method, manualInput, combinedInputScriptCommand, inputFilePath])
+    if (finalInputVal !== formData.input) {
+      setFormData(prev => ({ ...prev, input: finalInputVal }));
+    }
+  }, [formData.input_generation_method, formData.manualInput, formData.combinedInputScriptCommand, formData.inputFilePath, formData.input, setFormData]);
 
   useEffect(() => {
     let finalExpectedOutputVal = ''
-    switch (expected_output_generation_method) {
+    switch (formData.expected_output_generation_method) {
       case 'manual':
-        finalExpectedOutputVal = manualExpectedOutput
+        finalExpectedOutputVal = formData.manualExpectedOutput
         break
       case 'script':
-        finalExpectedOutputVal = combinedExpectedOutputScriptCommand
+        finalExpectedOutputVal = formData.combinedExpectedOutputScriptCommand
         break
       case 'file':
-        finalExpectedOutputVal = expectedOutputFilePath
+        finalExpectedOutputVal = formData.expectedOutputFilePath
         break
       default:
         finalExpectedOutputVal = ''
     }
-    setExpectedOutput(finalExpectedOutputVal)
-  }, [expected_output_generation_method, manualExpectedOutput, combinedExpectedOutputScriptCommand, expectedOutputFilePath])
+    if (finalExpectedOutputVal !== formData.expected_output) {
+      setFormData(prev => ({ ...prev, expected_output: finalExpectedOutputVal }));
+    }
+  }, [
+    formData.expected_output_generation_method, 
+    formData.manualExpectedOutput, 
+    formData.combinedExpectedOutputScriptCommand, 
+    formData.expectedOutputFilePath,
+    formData.expected_output,
+    setFormData
+  ]);
+
+
+  const handleEditLang = () => {
+    if (!formData.selectedLanguage) return;
+    if (onEditLang) {
+      // Pass the name of the selected configuration
+      const selectedConfig = configurations.find(c => c.config_id === formData.selectedConfigId);
+      if (selectedConfig) {
+        onEditLang(selectedConfig.config_name);
+      } else {
+        // Fallback or error if config_name not found, though selectedLanguage should hold it
+        onEditLang(formData.selectedLanguage); 
+      }
+    }
+  };
+  
+  const handleDeleteConfig = async () => {
+    if (!formData.selectedConfigId) return
+    if (!window.confirm('Delete this configuration?')) return
+    try {
+      await window.electron.deleteConfig(formData.selectedConfigId)
+      // refresh list and clear selection
+      const configs = await window.electron.getConfigurations()
+      setConfigurations(configs)
+      setFormData(prev => ({ ...prev, selectedLanguage: '', selectedConfigId: null }));
+      setShowLanguages(false)
+    } catch (err) {
+      console.error('Failed to delete config:', err)
+    }
+  };
+  
 
   const onProjectNameChange = (e) => {
-    setProjectName(e.target.value)
+    setFormData(prev => ({ ...prev, project_name: e.target.value }));
   }
 
   const onLanguageSelect = (config) => {
-    setSelectedLanguage(config.config_name)
-    setSelectedConfigId(config.config_id)
+    setFormData(prev => ({ ...prev, selectedLanguage: config.config_name, selectedConfigId: config.config_id }));
     setShowLanguages(false)
     console.log('Selected config ID:', config.config_id) // Debug log
   }
@@ -183,28 +176,28 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
     try {
       const directoryPath = await window.electron.openDirectory()
       if (directoryPath) {
-        setSubmissionsDirectory(directoryPath)
+        setFormData(prev => ({ ...prev, submissions_directory: directoryPath }));
       }
     } catch (error) {
       console.error('Error opening directory dialog:', error)
     }
   }
 
-  const onToggleInputManual = () => setInputMethod('manual')
-  const onToggleInputScript = () => setInputMethod('script')
-  const onToggleInputFile = () => setInputMethod('file')
+  const onToggleInputManual = () => setFormData(prev => ({ ...prev, input_generation_method: 'manual' }));
+  const onToggleInputScript = () => setFormData(prev => ({ ...prev, input_generation_method: 'script' }));
+  const onToggleInputFile = () => setFormData(prev => ({ ...prev, input_generation_method: 'file' }));
 
-  const onToggleOutputManual = () => setExpectedOutputMethod('manual')
-  const onToggleOutputScript = () => setExpectedOutputMethod('script')
-  const onToggleOutputFile = () => setExpectedOutputMethod('file')
+  const onToggleOutputManual = () => setFormData(prev => ({ ...prev, expected_output_generation_method: 'manual' }));
+  const onToggleOutputScript = () => setFormData(prev => ({ ...prev, expected_output_generation_method: 'script' }));
+  const onToggleOutputFile = () => setFormData(prev => ({ ...prev, expected_output_generation_method: 'file' }));
 
-  const onManualInputChange = (e) => setManualInput(e.target.value)
-  const onManualExpectedChange = (e) => setManualExpectedOutput(e.target.value)
+  const onManualInputChange = (e) => setFormData(prev => ({ ...prev, manualInput: e.target.value }));
+  const onManualExpectedChange = (e) => setFormData(prev => ({ ...prev, manualExpectedOutput: e.target.value }));
 
   const onPickInputFile = async () => {
     try {
       const filePath = await window.electron.openFile()
-      if (filePath) setInputFilePath(filePath)
+      if (filePath) setFormData(prev => ({ ...prev, inputFilePath: filePath }));
     } catch (error) {
       console.error('Error picking input file:', error)
     }
@@ -213,7 +206,7 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
   const onPickInputScriptFile = async () => {
     try {
       const filePath = await window.electron.openFile()
-      if (filePath) setInputScriptFilePath(filePath)
+      if (filePath) setFormData(prev => ({ ...prev, inputScriptFilePath: filePath }));
     } catch (error) {
       console.error('Error picking input script file:', error)
     }
@@ -222,7 +215,7 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
   const onPickExpectedOutputFile = async () => {
     try {
       const filePath = await window.electron.openFile()
-      if (filePath) setExpectedOutputFilePath(filePath)
+      if (filePath) setFormData(prev => ({ ...prev, expectedOutputFilePath: filePath }));
     } catch (error) {
       console.error('Error picking expected output file:', error)
     }
@@ -231,53 +224,43 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
   const onPickExpectedOutputScriptFile = async () => {
     try {
       const filePath = await window.electron.openFile()
-      if (filePath) setExpectedOutputScriptFilePath(filePath)
+      if (filePath) setFormData(prev => ({ ...prev, expectedOutputScriptFilePath: filePath }));
     } catch (error) {
       console.error('Error picking expected output script file:', error)
     }
   }
 
   const onCancelProject = () => {
-    setProjectName('')
-    setSubmissionsDirectory('')
-    setManualInput('')
-    setInputScriptCommand('')
-    setInputScriptFilePath('')
-    setInputFilePath('')
-    setManualExpectedOutput('')
-    setExpectedOutputScriptCommand('')
-    setExpectedOutputScriptFilePath('')
-    setExpectedOutputFilePath('')
-    setInput('')
-    setExpectedOutput('')
-    setInputMethod('manual')
-    setExpectedOutputMethod('manual')
+    setFormData(initialFormData); // Reset to initial state provided by App.jsx
+    if (onCancel) { // Use the new onCancel prop
+      onCancel();
+    }
   }
 
   const handleCreateProject = () => {
-    if (!selectedConfigId) {
+    if (!formData.selectedConfigId) {
       console.error('No configuration selected or config_id not found.')
       return
     }
 
     const projectData = {
-      name: project_name,
-      config_id: selectedConfigId,
-      submissions_path: submissions_directory,
+      name: formData.project_name,
+      config_id: formData.selectedConfigId,
+      submissions_path: formData.submissions_directory,
     }
 
     const testConfigData = {
-      input_method: input_generation_method,
-      input: input,
-      output_method: expected_output_generation_method,
-      expected_output: expected_output,
+      input_method: formData.input_generation_method,
+      input: formData.input,
+      output_method: formData.expected_output_generation_method,
+      expected_output: formData.expected_output,
     }
 
     const projectPayload = {
       project: projectData,
       testConfig: testConfigData,
     }
-
+    console.log('ProjectCreation.jsx: handleCreateProject called with payload:', projectPayload); // Added console log
     onCreateProject(projectPayload)
   }
 
@@ -288,16 +271,16 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
   }
 
   const handleExportConfig = async () => {
-    if (!selectedConfigId) {
+    if (!formData.selectedConfigId) {  // Changed from selectedConfigId to formData.selectedConfigId
       console.error('No configuration selected for export');
       return;
     }
     
     try {
-      console.log('Exporting configuration with ID:', selectedConfigId);
+      console.log('Exporting configuration with ID:', formData.selectedConfigId);  // Changed reference
       
       // Get the selected configuration by ID
-      const config = await window.electron.getConfigurationById(selectedConfigId);
+      const config = await window.electron.getConfigurationById(formData.selectedConfigId);  // Changed reference
       
       if (!config) {
         console.error('Configuration not found');
@@ -370,8 +353,11 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
       // Select the newly imported configuration
       const newConfig = configs.find(c => c.config_name === importedConfig.config_name);
       if (newConfig) {
-        setSelectedLanguage(newConfig.config_name);
-        setSelectedConfigId(newConfig.config_id);
+        setFormData(prev => ({  // Changed from setSelectedLanguage
+          ...prev,
+          selectedLanguage: newConfig.config_name,
+          selectedConfigId: newConfig.config_id
+        }));
       }
       
     } catch (error) {
@@ -383,7 +369,9 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
     <>
 
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-8 text-gray-200">Create New Project</h1>
+      <h1 className="text-2xl font-bold mb-8 text-gray-200">
+        {isEditing ? 'Edit Project' : 'Create New Project'}
+      </h1>
 
       <div className="space-y-6">
         <div className="card">
@@ -393,7 +381,7 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
               <div className="w-40 text-gray-300">Project Name:</div>
               <input
                 type="text"
-                value={project_name}
+                value={formData.project_name}
                 onChange={onProjectNameChange}
                 className="input-field flex-1"
                 placeholder="Enter project name"
@@ -406,11 +394,11 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
                 <div className="flex-1 mr-2">
                   <input
                     type="text"
-                    value={submissions_directory}
-                    onChange={(e) => setSubmissionsDirectory(e.target.value)}
+                    value={formData.submissions_directory}
+                    onChange={(e) => setFormData(prev => ({ ...prev, submissions_directory: e.target.value }))}
                     placeholder="Select submissions directory"
                     className="input-field w-full"
-                    readOnly
+                    readOnly // Should remain readOnly if path is picked by dialog
                   />
                 </div>
                 <button
@@ -437,7 +425,7 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
                       onClick={() => setShowLanguages(!showLanguages)}
                       className="input-field w-full text-left flex items-center justify-between hover:border-dark-hover"
                     >
-                      <span>{selectedLanguage || 'Select Config...'}</span>
+                      <span>{formData.selectedLanguage || 'Select Config...'}</span>
                       <FaChevronDown
                         className={`text-gray-400 text-sm transition-transform duration-200 ${
                           showLanguages ? 'rotate-180' : ''
@@ -454,13 +442,15 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
                             <div
                               key={config.config_id}
                               className={`px-4 py-2 hover:bg-dark-hover cursor-pointer transition-colors ${
-                                selectedConfigId === config.config_id ? 'bg-primary-700/20 text-primary-400' : ''
+                                formData.selectedLanguage === config.config_name ? 'bg-primary-700/20 text-primary-400' : ''
                               }`}
                               onClick={() => onLanguageSelect(config)}
                             >
                               <div className="flex items-center justify-between">
                                 <span>{config.config_name}</span>
-                                {selectedConfigId === config.config_id && <FaCheck className="text-primary-400 text-sm" />}
+                                {formData.selectedLanguage === config.config_name && (
+                                  <FaCheck className="text-primary-400 text-sm" />
+                                )}
                               </div>
                             </div>
                           ))
@@ -470,7 +460,7 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
                   </div>
 
                   <button
-                    onClick={handleNewLanguageConfig}
+                    onClick={onNewLangConfig} // Directly use prop from App.jsx
                     className="btn-outline hover:border-secondary-500 hover:bg-secondary-700/20 hover:text-secondary-400"
                     title="Create new configuration"
                   >
@@ -482,7 +472,7 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
                     onClick={handleEditLang}
                     className="btn-outline hover:border-primary-500 hover:bg-primary-700/20 hover:text-primary-400"
                     title="Edit configuration"
-                    disabled={!selectedLanguage}
+                    disabled={!formData.selectedLanguage}
                   >
                     <FaPencilAlt className="mr-2 text-xs" />
                     Edit
@@ -492,7 +482,7 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
                     onClick={handleDeleteConfig}
                     className="btn-outline hover:border-error-500 hover:bg-error-700/20 hover:text-error-400"
                     title="Delete configuration"
-                    disabled={!selectedLanguage}
+                    disabled={!formData.selectedLanguage}
                   >
                     <FaTrash className="mr-2 text-xs" /> Delete
                   </button>
@@ -510,7 +500,7 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
                     onClick={handleExportConfig}
                     className="btn-outline hover:border-primary-500 hover:bg-primary-700/20 hover:text-primary-400"
                     title="Export configuration"
-                    disabled={!selectedConfigId}
+                    disabled={!formData.selectedConfigId}  // Changed from selectedConfigId
                   >
                     <FaFileExport className="mr-2 text-xs" />
                     Export
@@ -533,14 +523,14 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
                 <div
                   onClick={onToggleInputManual}
                   className={`toggle-btn ${
-                    input_generation_method === 'manual'
+                    formData.input_generation_method === 'manual'
                       ? 'bg-primary-700/30 border-primary-500 text-white'
                       : 'bg-dark-bg border-dark-border text-gray-400 hover:border-dark-hover hover:bg-dark-hover/30'
                   }`}
                 >
                   <FaKeyboard
                     className={`mr-2 ${
-                      input_generation_method === 'manual' ? 'text-primary-400' : 'text-gray-500'
+                      formData.input_generation_method === 'manual' ? 'text-primary-400' : 'text-gray-500'
                     }`}
                   />
                   Manual
@@ -548,14 +538,14 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
                 <div
                   onClick={onToggleInputFile}
                   className={`toggle-btn ${
-                    input_generation_method === 'file'
+                    formData.input_generation_method === 'file'
                       ? 'bg-primary-700/30 border-primary-500 text-white'
                       : 'bg-dark-bg border-dark-border text-gray-400 hover:border-dark-hover hover:bg-dark-hover/30'
                   }`}
                 >
                   <FaFileCode
                     className={`mr-2 ${
-                      input_generation_method === 'file' ? 'text-primary-400' : 'text-gray-500'
+                      formData.input_generation_method === 'file' ? 'text-primary-400' : 'text-gray-500'
                     }`}
                   />
                   File
@@ -563,14 +553,14 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
                 <div
                   onClick={onToggleInputScript}
                   className={`toggle-btn ${
-                    input_generation_method === 'script'
+                    formData.input_generation_method === 'script'
                       ? 'bg-primary-700/30 border-primary-500 text-white'
                       : 'bg-dark-bg border-dark-border text-gray-400 hover:border-dark-hover hover:bg-dark-hover/30'
                   }`}
                 >
                   <FaTerminal
                     className={`mr-2 ${
-                      input_generation_method === 'script' ? 'text-primary-400' : 'text-gray-500'
+                      formData.input_generation_method === 'script' ? 'text-primary-400' : 'text-gray-500'
                     }`}
                   />
                   Script
@@ -578,12 +568,12 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
               </div>
             </div>
 
-            {input_generation_method === 'manual' && (
+            {formData.input_generation_method === 'manual' && (
               <div className="flex items-center animate-fade-in">
                 <div className="w-40 text-gray-300">Manual Input:</div>
                 <input
                   type="text"
-                  value={manualInput}
+                  value={formData.manualInput}
                   onChange={onManualInputChange}
                   className="input-field flex-1"
                   placeholder={testPlaceholders.input}
@@ -591,14 +581,14 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
               </div>
             )}
 
-            {input_generation_method === 'script' && (
+            {formData.input_generation_method === 'script' && (
               <div className="space-y-4 animate-fade-in">
                 <div className="flex items-center">
                   <div className="w-40 text-gray-300">Input Script Cmd:</div>
                   <input
                     type="text"
-                    value={inputScriptCommand}
-                    onChange={(e) => setInputScriptCommand(e.target.value)}
+                    value={formData.inputScriptCommand}
+                    onChange={(e) => setFormData(prev => ({ ...prev, inputScriptCommand: e.target.value }))}
                     className="input-field flex-1"
                     placeholder={testPlaceholders.inputScriptCommand}
                   />
@@ -608,8 +598,8 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
                   <div className="flex-1 flex">
                     <input
                       type="text"
-                      value={inputScriptFilePath}
-                      onChange={(e) => setInputScriptFilePath(e.target.value)}
+                      value={formData.inputScriptFilePath}
+                      onChange={(e) => setFormData(prev => ({ ...prev, inputScriptFilePath: e.target.value }))}
                       className="input-field flex-1 mr-2"
                       placeholder={testPlaceholders.inputScriptFilePath}
                     />
@@ -626,7 +616,7 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
                   <div className="w-40 text-gray-300">Final Input Cmd:</div>
                   <input
                     type="text"
-                    value={combinedInputScriptCommand}
+                    value={formData.combinedInputScriptCommand}
                     className="input-field flex-1 bg-dark-bg cursor-not-allowed"
                     placeholder="Combined script command"
                     disabled
@@ -635,17 +625,17 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
               </div>
             )}
 
-            {input_generation_method === 'file' && (
+            {formData.input_generation_method === 'file' && (
               <div className="flex items-center animate-fade-in">
                 <div className="w-40 text-gray-300">Input File Path:</div>
                 <div className="flex-1 flex">
                   <input
                     type="text"
-                    value={inputFilePath}
-                    onChange={(e) => setInputFilePath(e.target.value)}
+                    value={formData.inputFilePath}
+                    onChange={(e) => setFormData(prev => ({ ...prev, inputFilePath: e.target.value }))}
                     placeholder={testPlaceholders.inputFilePath}
                     className="input-field flex-1 mr-2"
-                    readOnly
+                    readOnly // Should remain readOnly if path is picked by dialog
                   />
                   <button
                     onClick={onPickInputFile}
@@ -666,14 +656,14 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
                 <div
                   onClick={onToggleOutputManual}
                   className={`toggle-btn ${
-                    expected_output_generation_method === 'manual'
+                    formData.expected_output_generation_method === 'manual'
                       ? 'bg-primary-700/30 border-primary-500 text-white'
                       : 'bg-dark-bg border-dark-border text-gray-400 hover:border-dark-hover hover:bg-dark-hover/30'
                   }`}
                 >
                   <FaKeyboard
                     className={`mr-2 ${
-                      expected_output_generation_method === 'manual' ? 'text-primary-400' : 'text-gray-500'
+                      formData.expected_output_generation_method === 'manual' ? 'text-primary-400' : 'text-gray-500'
                     }`}
                   />
                   Manual
@@ -681,14 +671,14 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
                 <div
                   onClick={onToggleOutputFile}
                   className={`toggle-btn ${
-                    expected_output_generation_method === 'file'
+                    formData.expected_output_generation_method === 'file'
                       ? 'bg-primary-700/30 border-primary-500 text-white'
                       : 'bg-dark-bg border-dark-border text-gray-400 hover:border-dark-hover hover:bg-dark-hover/30'
                   }`}
                 >
                   <FaFileCode
                     className={`mr-2 ${
-                      expected_output_generation_method === 'file' ? 'text-primary-400' : 'text-gray-500'
+                      formData.expected_output_generation_method === 'file' ? 'text-primary-400' : 'text-gray-500'
                     }`}
                   />
                   File
@@ -696,14 +686,14 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
                 <div
                   onClick={onToggleOutputScript}
                   className={`toggle-btn ${
-                    expected_output_generation_method === 'script'
+                    formData.expected_output_generation_method === 'script'
                       ? 'bg-primary-700/30 border-primary-500 text-white'
                       : 'bg-dark-bg border-dark-border text-gray-400 hover:border-dark-hover hover:bg-dark-hover/30'
                   }`}
                 >
                   <FaTerminal
                     className={`mr-2 ${
-                      expected_output_generation_method === 'script' ? 'text-primary-400' : 'text-gray-500'
+                      formData.expected_output_generation_method === 'script' ? 'text-primary-400' : 'text-gray-500'
                     }`}
                   />
                   Script
@@ -711,12 +701,12 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
               </div>
             </div>
 
-            {expected_output_generation_method === 'manual' && (
+            {formData.expected_output_generation_method === 'manual' && (
               <div className="flex animate-fade-in">
                 <div className="w-40 text-gray-300 mt-2">Manual Output:</div>
                 <div className="flex-1">
                   <textarea
-                    value={manualExpectedOutput}
+                    value={formData.manualExpectedOutput}
                     onChange={onManualExpectedChange}
                     className="input-field w-full h-24 resize-none font-mono text-sm"
                     placeholder={testPlaceholders.expectedOutput}
@@ -725,14 +715,14 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
               </div>
             )}
 
-            {expected_output_generation_method === 'script' && (
+            {formData.expected_output_generation_method === 'script' && (
               <div className="space-y-4 animate-fade-in">
                 <div className="flex items-center">
                   <div className="w-40 text-gray-300">Output Script Cmd:</div>
                   <input
                     type="text"
-                    value={expectedOutputScriptCommand}
-                    onChange={(e) => setExpectedOutputScriptCommand(e.target.value)}
+                    value={formData.expectedOutputScriptCommand}
+                    onChange={(e) => setFormData(prev => ({ ...prev, expectedOutputScriptCommand: e.target.value }))}
                     className="input-field flex-1"
                     placeholder={testPlaceholders.expectedOutputScriptCommand}
                   />
@@ -742,8 +732,8 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
                   <div className="flex-1 flex">
                     <input
                       type="text"
-                      value={expectedOutputScriptFilePath}
-                      onChange={(e) => setExpectedOutputScriptFilePath(e.target.value)}
+                      value={formData.expectedOutputScriptFilePath}
+                      onChange={(e) => setFormData(prev => ({ ...prev, expectedOutputScriptFilePath: e.target.value }))}
                       className="input-field flex-1 mr-2"
                       placeholder={testPlaceholders.expectedOutputScriptFilePath}
                     />
@@ -760,7 +750,7 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
                   <div className="w-40 text-gray-300">Final Output Cmd:</div>
                   <input
                     type="text"
-                    value={combinedExpectedOutputScriptCommand}
+                    value={formData.combinedExpectedOutputScriptCommand}
                     className="input-field flex-1 bg-dark-bg cursor-not-allowed"
                     placeholder="Combined script command"
                     disabled
@@ -769,17 +759,17 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
               </div>
             )}
 
-            {expected_output_generation_method === 'file' && (
+            {formData.expected_output_generation_method === 'file' && (
               <div className="flex items-center animate-fade-in">
                 <div className="w-40 text-gray-300">Output File Path:</div>
                 <div className="flex-1 flex">
                   <input
                     type="text"
-                    value={expectedOutputFilePath}
-                    onChange={(e) => setExpectedOutputFilePath(e.target.value)}
+                    value={formData.expectedOutputFilePath}
+                    onChange={(e) => setFormData(prev => ({ ...prev, expectedOutputFilePath: e.target.value }))}
                     placeholder={testPlaceholders.expectedOutputFilePath}
                     className="input-field flex-1 mr-2"
-                    readOnly
+                    readOnly // Should remain readOnly if path is picked by dialog
                   />
                   <button
                     onClick={onPickExpectedOutputFile}
@@ -799,8 +789,8 @@ const ProjectCreation = ({onCreateProject, onNewLangConfig, onEditLang }) => {
             Cancel
           </button>
           <button onClick={handleCreateProject} className="btn-primary">
-            <FaPlus className="mr-2" />
-            Create Project
+            {isEditing ? <FaPencilAlt className="mr-2" /> : <FaPlus className="mr-2" />}
+            {isEditing ? 'Update Project' : 'Create Project'}
           </button>
         </div>
       </div>

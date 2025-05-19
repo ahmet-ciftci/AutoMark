@@ -319,11 +319,37 @@ app.whenReady().then(() => {
     });
   });
 
+  ipcMain.handle('update-project', async (event, projectId, name, configId, submissionsPath) => {
+    return new Promise((resolve, reject) => {
+      db.updateProject(projectId, name, configId, submissionsPath, (err, changes) => {
+        if (err) {
+          console.error('Error updating project in main.js:', err);
+          reject(err);
+        } else {
+          resolve(changes);
+        }
+      });
+    });
+  });
+
   ipcMain.handle('get-configuration-by-id', async (event, id) => {
     return new Promise((resolve, reject) => {
       db.getConfigurationById(id, (err, row) => {
         if (err) reject(err);
         else resolve(row);
+      });
+    });
+  });
+
+  ipcMain.handle('delete-test-config', async (event, testConfigId) => {
+    return new Promise((resolve, reject) => {
+      db.deleteTestConfig(testConfigId, (err, changes) => {
+        if (err) {
+          console.error('Error deleting test config in main.js:', err);
+          reject(err);
+        } else {
+          resolve(changes);
+        }
       });
     });
   });
@@ -395,6 +421,19 @@ app.whenReady().then(() => {
       console.error('Process submission error:', err);
       throw err;
     }
+  });
+
+  ipcMain.handle('delete-project', async (event, projectId) => {
+    return new Promise((resolve, reject) => {
+      db.deleteProject(projectId, (err, changes) => {
+        if (err) {
+          console.error('Error deleting project in main.js:', err);
+          reject(err);
+        } else {
+          resolve(changes);
+        }
+      });
+    });
   });
 
   app.on('activate', () => {
