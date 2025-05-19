@@ -43,7 +43,23 @@ const ReportsView = ({projectId}) => {
           return;
         }
         
-        setSubmissions(rows);
+        // Sort submissions by student_id
+        const sortedRows = rows.sort((a, b) => {
+          // Assuming student_id is a string that might contain numbers, 
+          // sort numerically if possible, otherwise alphabetically.
+          const idA = String(a.student_id);
+          const idB = String(b.student_id);
+          
+          const isNumA = /^\d+$/.test(idA);
+          const isNumB = /^\d+$/.test(idB);
+
+          if (isNumA && isNumB) {
+            return parseInt(idA, 10) - parseInt(idB, 10);
+          }
+          return idA.localeCompare(idB);
+        });
+        
+        setSubmissions(sortedRows);
         
         // Get test configuration to retrieve the expected output
         const testConfig = await window.electron.getTestConfigByProjectId(projectId);
@@ -59,9 +75,9 @@ const ReportsView = ({projectId}) => {
         }
         
         // Select the first submission by default if available
-        if (rows.length > 0) {
-          setSelectedSubmission(rows[0].submission_id);
-          updateStudentOutput(rows[0]);
+        if (sortedRows.length > 0) {
+          setSelectedSubmission(sortedRows[0].submission_id);
+          updateStudentOutput(sortedRows[0]);
         }
         
         setLoading(false);

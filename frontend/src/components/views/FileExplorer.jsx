@@ -47,7 +47,29 @@ const FileExplorer = ({ projectId }) => {
       try {
         const structure = await window.electron.getProjectFiles(projectId);
         if (structure && structure.length > 0) {
-          setFolders(structure);
+          // Sort the structure: folders first, then files, then alphabetically by name
+          const sortedStructure = structure.sort((a, b) => {
+            // Sort by type first (folders before files)
+            if (a.type === 'folder' && b.type === 'file') {
+              return -1;
+            }
+            if (a.type === 'file' && b.type === 'folder') {
+              return 1;
+            }
+
+            // Then sort by name alphabetically
+            const nameA = a.name.toLowerCase();
+            const nameB = b.name.toLowerCase();
+
+            if (nameA < nameB) {
+              return -1;
+            }
+            if (nameA > nameB) {
+              return 1;
+            }
+            return 0;
+          });
+          setFolders(sortedStructure);
         } else {
           // If structure is empty or not returned, it implies no submissions or a problem.
           // The backend error messages are more specific, so we prefer those if they exist.
