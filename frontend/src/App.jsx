@@ -440,7 +440,23 @@ function App() {
 
         );
       default:
-        return <p>Help</p>;
+        return (
+          <>
+            <p><strong>Welcome to AutoMark!</strong></p>
+            <div className="h-4" />
+            <p>This is the home screen where you can view, edit, or manage all existing projects.</p>
+            <div className="h-4" />
+            <p><strong>Available Actions:</strong></p>
+            <ul className="list-disc list-inside">
+              <li><strong>New Project:</strong> Create a new project from scratch.</li>
+              <li><strong>Edit:</strong> Modify the configuration or details of an existing project.</li>
+              <li><strong>Delete:</strong> Permanently remove a project.</li>
+              <li><strong>Open:</strong> Navigate to project reports and results.</li>
+            </ul>
+            <div className="h-4" />
+            <p>You can scroll to browse all available projects. Click any project to begin reviewing its results.</p>
+          </>
+        );
     }
   };
 

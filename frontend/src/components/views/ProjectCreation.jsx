@@ -238,9 +238,53 @@ const ProjectCreation = ({
   }
 
   const handleCreateProject = () => {
+    // Validate required fields
+    if (!formData.project_name.trim()) {
+      alert('Project Name is required.');
+      return;
+    }
+    if (!formData.submissions_directory) {
+      alert('Submissions Path is required.');
+      return;
+    }
     if (!formData.selectedConfigId) {
-      console.error('No configuration selected or config_id not found.')
-      return
+      alert('Configuration must be selected.');
+      // console.error('No configuration selected or config_id not found.'); // Already handled by existing check
+      return;
+    }
+
+    // Validate input based on generation method
+    if (formData.input_generation_method === 'manual' && !formData.manualInput.trim()) {
+      alert('Manual Input is required.');
+      return;
+    }
+    if (formData.input_generation_method === 'script' && !formData.combinedInputScriptCommand.trim()) {
+      alert('Input Script Command is required.');
+      return;
+    }
+    if (formData.input_generation_method === 'file' && !formData.inputFilePath.trim()) {
+      alert('Input File Path is required.');
+      return;
+    }
+    
+    // Validate expected output based on generation method
+    if (formData.expected_output_generation_method === 'manual' && !formData.manualExpectedOutput.trim()) {
+      alert('Manual Expected Output is required.');
+      return;
+    }
+    if (formData.expected_output_generation_method === 'script' && !formData.combinedExpectedOutputScriptCommand.trim()) {
+      alert('Expected Output Script Command is required.');
+      return;
+    }
+    if (formData.expected_output_generation_method === 'file' && !formData.expectedOutputFilePath.trim()) {
+      alert('Expected Output File Path is required.');
+      return;
+    }
+
+    // Existing check for selectedConfigId (can be kept or removed if covered by above)
+    if (!formData.selectedConfigId) {
+      console.error('No configuration selected or config_id not found.');
+      return;
     }
 
     const projectData = {
