@@ -1,0 +1,14 @@
+/* Animations for MenuBar dropdowns */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+/* Glow effects for primary buttons */
+.glow-primary:hover {
+  box-shadow: 0 0 15px 3px rgba(0, 102, 255, 0.3);
+}
