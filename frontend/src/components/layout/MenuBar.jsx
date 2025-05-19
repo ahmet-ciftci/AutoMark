@@ -1,40 +1,30 @@
 import { useState, useEffect, useRef } from 'react'
 import { FaFile, FaEdit, FaEye, FaQuestionCircle, FaHome } from 'react-icons/fa'
 
-const MenuBar = ({ onNewProject = () => {}, onOpenProject = () => {}, onGoHome = () => {} }) => {
+const MenuBar = ({ onNewProject = () => {}, onOpenProject = () => {}, helpContent = null, onGoHome = () => {} }) => {
   const [openMenu, setOpenMenu] = useState(null)
   const menuRef = useRef(null)
-  
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setOpenMenu(null)
       }
     }
-    
-    // Add event listener when a menu is open
     if (openMenu) {
       document.addEventListener('mousedown', handleClickOutside)
     }
-    
-    // Clean up the event listener
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [openMenu])
-  
+
   const toggleMenu = (menu) => {
-    if (openMenu === menu) {
-      setOpenMenu(null)
-    } else {
-      setOpenMenu(menu)
-    }
+    setOpenMenu(prev => (prev === menu ? null : menu))
   }
-  
-  const closeMenu = () => {
-    setOpenMenu(null)
-  }
-  
+
+  const closeMenu = () => setOpenMenu(null)
+
   const handleNewProject = () => {
     onNewProject()
     closeMenu()
@@ -44,10 +34,11 @@ const MenuBar = ({ onNewProject = () => {}, onOpenProject = () => {}, onGoHome =
     onGoHome();
     closeMenu();
   }
-  
+
   return (
     <div ref={menuRef} className="bg-[#121212] text-gray-200 h-12 flex items-center px-4 w-full border-b border-[#333] shadow-sm">
       <div className="flex gap-1">
+        {/* FILE MENU */}
         {/* Home Button */}
         <button 
           onClick={handleGoHome}
@@ -74,6 +65,7 @@ const MenuBar = ({ onNewProject = () => {}, onOpenProject = () => {}, onGoHome =
                   <span className="menu-item-shortcut">Ctrl+N</span>
                 </div>
                 <div className="menu-item group" onClick={() => { onOpenProject(); closeMenu(); }}>
+                <div className="menu-item group" onClick={() => { onOpenProject(); closeMenu(); }}>
                   <span className="menu-item-text">Open Project</span>
                   <span className="menu-item-shortcut">Ctrl+O</span>
                 </div>
@@ -99,6 +91,7 @@ const MenuBar = ({ onNewProject = () => {}, onOpenProject = () => {}, onGoHome =
           )}
         </div>
 
+        {/* EDIT MENU */}
         <div className="relative">
           <button 
             onClick={() => toggleMenu('edit')}
@@ -127,6 +120,7 @@ const MenuBar = ({ onNewProject = () => {}, onOpenProject = () => {}, onGoHome =
           )}
         </div>
 
+        {/* VIEW MENU */}
         <div className="relative">
           <button 
             onClick={() => toggleMenu('view')}
@@ -138,12 +132,13 @@ const MenuBar = ({ onNewProject = () => {}, onOpenProject = () => {}, onGoHome =
           {openMenu === 'view' && (
             <div className="absolute left-0 top-full mt-1 w-56 bg-[#1e1e1e] rounded-md z-50 border border-[#333] shadow-lg">
               <div className="py-1">
-                {/* Simplified menu content */}
+                {/* View menu content can go here */}
               </div>
             </div>
           )}
         </div>
 
+        {/* HELP MENU */}
         <div className="relative">
           <button 
             onClick={() => toggleMenu('help')}
@@ -154,8 +149,10 @@ const MenuBar = ({ onNewProject = () => {}, onOpenProject = () => {}, onGoHome =
           </button>
           {openMenu === 'help' && (
             <div className="absolute left-0 top-full mt-1 w-56 bg-[#1e1e1e] rounded-md z-50 border border-[#333] shadow-lg">
-              <div className="py-1">
-                {/* Simplified menu content */}
+              <div className="py-2 px-3 text-sm text-gray-300 space-y-2 max-h-80 overflow-y-auto">
+                {helpContent || (
+                  <p>Help content is not available.</p>
+                )}
               </div>
             </div>
           )}

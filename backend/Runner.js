@@ -6,7 +6,8 @@ const {
   getSubmissionsAndTestConfig,
   getConfigurationByProjectId,
   updateSubmissionStatus,
-  updateActualOutput
+  updateActualOutput,
+  updateSubmissionError,
 } = require("./Database");
 
 function runAllCompiledSubmissions(projectId, doneCallback) {
@@ -100,6 +101,11 @@ function runAllCompiledSubmissions(projectId, doneCallback) {
             });
           } else {
             console.error(`${submission.student_id} runtime error:`, errorOutput.trim());
+
+            updateSubmissionError(submission.submission_id, errorOutput.trim(), (err) => {
+              if (err) console.error("Failed to save error to DB:", err.message);
+            });
+
             updateSubmissionStatus(submission.submission_id, "runtime_error", (err) => {
               if (err) console.error("Error updating status:", err);
               if (--remaining === 0) doneCallback?.();

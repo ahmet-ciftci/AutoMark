@@ -311,6 +311,13 @@ function getAllProjects(callback) {
   });
 }
 
+function updateSubmissionError(submissionId, errorMessage, callback) {
+  const query = `UPDATE Submissions SET error_message = ? WHERE id = ?`;
+  db.run(query, [errorMessage, submissionId], function (err) {
+    callback(err);
+  });
+}
+
 
 
 module.exports = {
@@ -341,4 +348,5 @@ module.exports = {
   getProjectById,
   getTestConfigByProjectId,
   getAllProjects,
+  updateSubmissionError,
 };
