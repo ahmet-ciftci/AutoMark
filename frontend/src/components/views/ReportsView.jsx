@@ -429,6 +429,34 @@ const ReportsView = ({projectId}) => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {submissions.map(sub => {
                       const isSelected = selectedReports.includes(sub.submission_id);
+
+                      // Calculate score for display in modal
+                      let scoreText;
+                      let numericScore;
+
+                      if (sub.status === 'compile_error' || sub.status === 'runtime_error' || sub.status === 'time_exceeded' || sub.actual_output == null) {
+                        scoreText = '0%';
+                        numericScore = 0;
+                      } else {
+                        const studentOutputLines = sub.actual_output.split('\n').map(line => line.trim());
+                        const subTotalLines = studentOutputLines.length;
+                        let subMatches = 0;
+
+                        if (expectedOutput && expectedOutput.length > 0) {
+                          studentOutputLines.forEach((studentLine, index) => {
+                            if (index < expectedOutput.length) {
+                              if (studentLine === expectedOutput[index].value) {
+                                subMatches++;
+                              }
+                            }
+                          });
+                        }
+                        
+                        const calculatedScore = subTotalLines > 0 ? Math.round((subMatches / subTotalLines) * 100) : 0;
+                        scoreText = `${calculatedScore}%`;
+                        numericScore = calculatedScore;
+                      }
+
                       return (
                         <div
                           key={sub.submission_id}
@@ -441,14 +469,8 @@ const ReportsView = ({projectId}) => {
                         >
                           <div className="flex justify-between">
                             <span className="text-gray-300 font-medium">Student {sub.student_id}</span>
-                            <span className={`px-2 py-1 rounded text-sm ${
-                              sub.status === 'compile_error' || sub.status === 'runtime_error' 
-                                ? getStatusColorClass(sub.status) 
-                                : getScoreColorClass(sub.score || 0)
-                            }`}>
-                              {sub.status === 'compile_error' || sub.status === 'runtime_error' 
-                                ? sub.status.replace('_', ' ') 
-                                : (sub.score || '0')}
+                            <span className={`px-2 py-1 rounded text-sm ${getScoreColorClass(numericScore)}`}>
+                              {scoreText}
                             </span>
                           </div>
                           {isSelected && <FaCheck className="text-primary-400 float-right mt-2" />}

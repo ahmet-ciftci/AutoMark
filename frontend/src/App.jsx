@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react' // Added useRef
+import { useState, useEffect, useRef } from 'react';
+import { AnimatePresence, motion } from 'framer-motion'; // Import AnimatePresence and motion
 import MenuBar from './components/layout/MenuBar'
 import Sidebar from './components/layout/Sidebar'
 import MainContent from './components/layout/MainContent'
@@ -95,8 +96,8 @@ function App() {
   
   // Change view with animation
   const switchView = (newView) => {
-    setActiveView(newView)
-    setKey(prev => prev + 1)
+    setActiveView(newView);
+    // setKey(prev => prev + 1); // We might not need this key change with AnimatePresence
   }
 
   const goToWelcomeScreen = () => {
@@ -463,21 +464,24 @@ function App() {
 
   // Render the appropriate view based on activeView state
   const renderView = () => {
+    let viewComponent;
     switch (activeView) {
       case 'welcome': // Add this case
-        return <WelcomeScreen 
+        viewComponent = <WelcomeScreen 
                   onOpenProject={onSelectExistingProject} 
                   onEditProject={handleEditProject} 
                   onNewProjectClick={openNewProject} // Pass openNewProject here
                 />;
+        break;
       case 'config':
-        return <ConfigEditor
+        viewComponent = <ConfigEditor
           selectedLanguage={selectedLanguageForEditor}
           onCancelConfig={onCancelConfig}
           onSaveConfig={onSaveConfig}
-        />
+        />;
+        break;
       case 'project':
-        return <ProjectCreation 
+        viewComponent = <ProjectCreation 
                  formData={projectCreationFormData}
                  setFormData={setProjectCreationFormData}
                  initialFormData={initialProjectCreationFormData}
@@ -486,15 +490,30 @@ function App() {
                  onNewLangConfig={onNewLanguageConfig} 
                  isEditing={!!editingProjectId} // Pass isEditing prop
                  onCancel={() => goToWelcomeScreen()} // Pass cancel handler
-               />
+               />;
+        break;
       case 'reports':
-        return <ReportsView projectId={projectId} />
+        viewComponent = <ReportsView projectId={projectId} />;
+        break;
       case 'fileExplorer':
-        return <FileExplorer projectId={projectId} />
+        viewComponent = <FileExplorer projectId={projectId} />;
+        break;
       default:
-        return <ReportsView />
+        viewComponent = <ReportsView />;
     }
-  }
+    return (
+      <motion.div
+        key={activeView} // Unique key for AnimatePresence
+        initial={{ opacity: 0, x: 20 }} // Initial state: invisible and slightly to the right
+        animate={{ opacity: 1, x: 0 }} // Animate to: fully visible and at original position
+        exit={{ opacity: 0, x: -20 }} // Exit animation: fade out and move to the left
+        transition={{ duration: 0.15, ease: "easeInOut" }} // Animation duration and easing (changed from 0.3)
+        className="h-full w-full"
+      >
+        {viewComponent}
+      </motion.div>
+    );
+  };
 
   // Format the TTL time
   const formatTTL = (seconds) => {
@@ -521,13 +540,14 @@ function App() {
         {activeView !== 'project' && activeView !== 'config' && activeView !== 'welcome' && (
           <Sidebar
             activeView={activeView}
-            onViewChange={handleViewChange}
+            onViewChange={handleViewChange} // Ensure this calls switchView
           />
         )}
         <MainContent>
-          <div key={key} className="animate-fade-in h-full">
-            {renderView()}
-          </div>
+          {/* Replace the old div with AnimatePresence */}
+          <AnimatePresence mode="wait">
+            {renderView()} 
+          </AnimatePresence>
         </MainContent>
       </div>
 
