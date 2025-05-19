@@ -502,9 +502,29 @@ app.whenReady().then(() => {
     });
   });
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  // View menu handlers
+  ipcMain.handle('view-set-zoom-level', (event, level) => {
+    mainWindow.webContents.setZoomLevel(level);
   });
+
+  ipcMain.handle('view-get-zoom-level', () => {
+    return mainWindow.webContents.getZoomLevel();
+  });
+
+  ipcMain.handle('view-zoom-in', () => {
+    const currentZoom = mainWindow.webContents.getZoomLevel();
+    mainWindow.webContents.setZoomLevel(currentZoom + 0.5);
+  });
+
+  ipcMain.handle('view-zoom-out', () => {
+    const currentZoom = mainWindow.webContents.getZoomLevel();
+    mainWindow.webContents.setZoomLevel(currentZoom - 0.5);
+  });
+
+  ipcMain.handle('view-reset-zoom', () => {
+    mainWindow.webContents.setZoomLevel(0); // Reset to default zoom level
+  });
+
 });
 
 app.on('window-all-closed', () => {

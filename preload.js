@@ -33,4 +33,10 @@ contextBridge.exposeInMainWorld('electron', {
   updateProject: (projectId, name, configId, submissionsPath) => ipcRenderer.invoke('update-project', projectId, name, configId, submissionsPath),
   deleteTestConfig: (testConfigId) => ipcRenderer.invoke('delete-test-config', testConfigId),
   deleteProject: (projectId) => ipcRenderer.invoke('delete-project', projectId),
+  // View menu actions
+  setZoomLevel: (level) => ipcRenderer.invoke('view-set-zoom-level', level),
+  getZoomLevel: () => ipcRenderer.invoke('view-get-zoom-level'),
+  zoomIn: () => ipcRenderer.invoke('view-zoom-in'),
+  zoomOut: () => ipcRenderer.invoke('view-zoom-out'),
+  resetZoom: () => ipcRenderer.invoke('view-reset-zoom'),
 });

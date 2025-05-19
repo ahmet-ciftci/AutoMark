@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { FaFile, FaEdit, FaEye, FaQuestionCircle, FaHome } from 'react-icons/fa'
+import { FaEye, FaQuestionCircle, FaHome } from 'react-icons/fa'
 
 const MenuBar = ({ onNewProject = () => {}, onOpenProject = () => {}, helpContent = null, onGoHome = () => {} }) => {
   const [openMenu, setOpenMenu] = useState(null)
@@ -35,10 +35,16 @@ const MenuBar = ({ onNewProject = () => {}, onOpenProject = () => {}, helpConten
     closeMenu();
   }
 
+  const handleViewAction = (action) => {
+    if (window.electron && typeof window.electron[action] === 'function') {
+      window.electron[action]();
+    }
+    closeMenu();
+  };
+
   return (
     <div ref={menuRef} className="bg-[#121212] text-gray-200 h-12 flex items-center px-4 w-full border-b border-[#333] shadow-sm">
       <div className="flex gap-1">
-        {/* FILE MENU */}
         {/* Home Button */}
         <button 
           onClick={handleGoHome}
@@ -48,77 +54,6 @@ const MenuBar = ({ onNewProject = () => {}, onOpenProject = () => {}, helpConten
           <FaHome className="text-sm" />
           <span>Home</span>
         </button>
-
-        <div className="relative">
-          <button 
-            onClick={() => toggleMenu('file')}
-            className={`menu-bar-item flex items-center gap-2 ${openMenu === 'file' ? 'active bg-dark-hover text-white' : ''}`}
-          >
-            <FaFile className="text-sm" />
-            <span>File</span>
-          </button>
-          {openMenu === 'file' && (
-            <div className="absolute left-0 top-full mt-1 w-56 bg-[#1e1e1e] rounded-md z-50 border border-[#333] shadow-lg">
-              <div className="py-1">
-                <div className="menu-item group" onClick={handleNewProject}>
-                  <span className="menu-item-text">New Project</span>
-                  <span className="menu-item-shortcut">Ctrl+N</span>
-                </div>
-                <div className="menu-item group" onClick={() => { onOpenProject(); closeMenu(); }}>
-                  <span className="menu-item-text">Open Project</span>
-                  <span className="menu-item-shortcut">Ctrl+O</span>
-                </div>
-                <div className="menu-item group" onClick={closeMenu}>
-                  <span className="menu-item-text">Save Project</span>
-                  <span className="menu-item-shortcut">Ctrl+S</span>
-                </div>
-                <div className="menu-item group" onClick={closeMenu}>
-                  <span className="menu-item-text">Save Project As</span>
-                  <span className="menu-item-shortcut">Ctrl+Shift+S</span>
-                </div>
-                <div className="border-t border-[#444] my-1"></div>
-                <div className="menu-item group" onClick={closeMenu}>
-                  <span className="menu-item-text">Close Window</span>
-                  <span className="menu-item-shortcut">Alt+F4</span>
-                </div>
-                <div className="border-t border-[#444] my-1"></div>
-                <div className="menu-item group" onClick={closeMenu}>
-                  <span className="menu-item-text">Exit</span>
-                </div>
-              </div>
-            </div>
-          )}
-          
-        </div>
-
-        {/* EDIT MENU */}
-        <div className="relative">
-          <button 
-            onClick={() => toggleMenu('edit')}
-            className={`menu-bar-item flex items-center gap-2 ${openMenu === 'edit' ? 'active bg-dark-hover text-white' : ''}`}
-          >
-            <FaEdit className="text-sm" />
-            <span>Edit</span>
-          </button>
-          {openMenu === 'edit' && (
-            <div className="absolute left-0 top-full mt-1 w-56 bg-[#1e1e1e] rounded-md z-50 border border-[#333] shadow-lg">
-              <div className="py-1">
-                <div className="menu-item group" onClick={closeMenu}>
-                  <span className="menu-item-text">Cut</span>
-                  <span className="menu-item-shortcut">Ctrl+X</span>
-                </div>
-                <div className="menu-item group" onClick={closeMenu}>
-                  <span className="menu-item-text">Copy</span>
-                  <span className="menu-item-shortcut">Ctrl+C</span>
-                </div>
-                <div className="menu-item group" onClick={closeMenu}>
-                  <span className="menu-item-text">Paste</span>
-                  <span className="menu-item-shortcut">Ctrl+V</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
 
         {/* VIEW MENU */}
         <div className="relative">
@@ -132,7 +67,18 @@ const MenuBar = ({ onNewProject = () => {}, onOpenProject = () => {}, helpConten
           {openMenu === 'view' && (
             <div className="absolute left-0 top-full mt-1 w-56 bg-[#1e1e1e] rounded-md z-50 border border-[#333] shadow-lg">
               <div className="py-1">
-                {/* View menu content can go here */}
+                <div className="menu-item group" onClick={() => handleViewAction('resetZoom')}>
+                  <span className="menu-item-text">Actual Size</span>
+                  {/* <span className=\"menu-item-shortcut\">Ctrl+0</span> */}
+                </div>
+                <div className="menu-item group" onClick={() => handleViewAction('zoomIn')}>
+                  <span className="menu-item-text">Zoom In</span>
+                  {/* <span className=\"menu-item-shortcut\">Ctrl++</span> */}
+                </div>
+                <div className="menu-item group" onClick={() => handleViewAction('zoomOut')}>
+                  <span className="menu-item-text">Zoom Out</span>
+                  {/* <span className=\"menu-item-shortcut\">Ctrl+-</span> */}
+                </div>
               </div>
             </div>
           )}
