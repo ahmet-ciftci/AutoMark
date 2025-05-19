@@ -271,16 +271,16 @@ const ProjectCreation = ({
   }
 
   const handleExportConfig = async () => {
-    if (!formData.selectedConfigId) {  // Changed from selectedConfigId to formData.selectedConfigId
+    if (!formData.selectedConfigId) {
       console.error('No configuration selected for export');
       return;
     }
     
     try {
-      console.log('Exporting configuration with ID:', formData.selectedConfigId);  // Changed reference
+      console.log('Exporting configuration with ID:', formData.selectedConfigId);
       
-      // Get the selected configuration by ID
-      const config = await window.electron.getConfigurationById(formData.selectedConfigId);  // Changed reference
+      // Find the selected configuration from the configurations array
+      const config = configurations.find(c => c.config_id === formData.selectedConfigId);
       
       if (!config) {
         console.error('Configuration not found');
@@ -289,7 +289,7 @@ const ProjectCreation = ({
       
       // Format the configuration for export
       const exportConfig = {
-        config_name: config.name || config.config_name,
+        config_name: config.config_name,
         compile_command: config.compile_command,
         source_code: config.source_code || '',
         compile_parameters: config.compile_parameters || '',
@@ -297,10 +297,9 @@ const ProjectCreation = ({
       };
       
       // Create default filename based on configuration name
-      const configName = config.name || config.config_name;
-      const fileName = `${configName.replace(/\s+/g, '_')}_config.json`;
+      const fileName = `${config.config_name.replace(/\s+/g, '_')}_config.json`;
       
-      // Use the new specific JSON save dialog
+      // Use the JSON save dialog
       const filePath = await window.electron.showJsonSaveDialog({
         defaultPath: fileName
       });
@@ -316,7 +315,6 @@ const ProjectCreation = ({
       
     } catch (error) {
       console.error('Error exporting configuration:', error);
-      // You could add a user-visible error message here
     }
   };
   
