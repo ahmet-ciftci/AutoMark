@@ -81,7 +81,11 @@ function getProjects(callback) {
 function updateProject(id, name, configId, submissionsPath, callback) {
   const query = `UPDATE Projects SET name = ?, config_id = ?, submissions_path = ? WHERE id = ?`;
   db.run(query, [name, configId, submissionsPath, id], function (err) {
-    callback(err, this.changes);
+    // Ensure this.changes is correctly passed or handled if err occurs
+    if (err) {
+      return callback(err);
+    }
+    callback(null, this.changes);
   });
 }
 
@@ -168,14 +172,22 @@ function getTestConfigs(callback) {
 function updateTestConfig(id, projectId, inputMethod, input, outputMethod, expectedOutput, callback) {
   const query = `UPDATE TestConfig SET project_id = ?, input_method = ?, input = ?, output_method = ?, expected_output = ? WHERE id = ?`;
   db.run(query, [projectId, inputMethod, input, outputMethod, expectedOutput, id], function (err) {
-    callback(err, this.changes);
+    // Ensure this.changes is correctly passed or handled if err occurs
+    if (err) {
+      return callback(err);
+    }
+    callback(null, this.changes);
   });
 }
 
 function deleteTestConfig(id, callback) {
   const query = `DELETE FROM TestConfig WHERE id = ?`;
   db.run(query, [id], function (err) {
-    callback(err, this.changes);
+    // Ensure this.changes is correctly passed or handled if err occurs
+    if (err) {
+      return callback(err);
+    }
+    callback(null, this.changes);
   });
 }
 
@@ -208,10 +220,27 @@ function deleteSubmission(id, callback) {
   });
 }
 
+function deleteSubmissionsByProjectId(projectId, callback) {
+  const query = `DELETE FROM Submissions WHERE project_id = ?`;
+  db.run(query, [projectId], function (err) {
+    callback(err, this.changes);
+  });
+}
+
 // Other Methods
-function updateSubmissionStatus(id, status, callback) {
-  const query = `UPDATE Submissions SET status = ? WHERE id = ?`;
-  db.run(query, [status, id], function (err) {
+function updateSubmissionStatus(id, status, errorMessage = null, callback) {
+  let query;
+  let params;
+  
+  if (errorMessage !== null) {
+    query = `UPDATE Submissions SET status = ?, error_message = ? WHERE id = ?`;
+    params = [status, errorMessage, id];
+  } else {
+    query = `UPDATE Submissions SET status = ? WHERE id = ?`;
+    params = [status, id];
+  }
+  
+  db.run(query, params, function (err) {
     callback(err, this.changes);
   });
 }
@@ -279,6 +308,13 @@ function submissionExists(projectId, studentId, callback) {
   });
 }
 
+function getSubmissionById(id, callback) {
+  const query = `SELECT * FROM Submissions WHERE id = ?`;
+  db.get(query, [id], (err, row) => {
+    callback(err, row);
+  });
+}
+
 async function getProjectById(projectId, callback) {
   const query = `SELECT * FROM Projects WHERE id = ?`;
   db.get(query, [projectId], (err, row) => {
@@ -296,6 +332,26 @@ function getAllProjects(callback) {
   const query = `SELECT id, name FROM Projects ORDER BY id DESC`;
   db.all(query, [], (err, rows) => {
     callback(err, rows);
+  });
+}
+
+function getSubmissionPathsByProject(projectId, callback) {
+  const query = `SELECT path FROM Submissions WHERE project_id = ?`;
+  db.all(query, [projectId], (err, rows) => {
+    callback(err, rows);
+  });
+}
+
+async function getConfigurationById(id, callback) {
+  const query = `SELECT * FROM Configurations WHERE id = ?`;
+  db.get(query, [id], (err, row) => {
+    callback(err, row);
+  });
+}
+function updateSubmissionError(submissionId, errorMessage, callback) {
+  const query = `UPDATE Submissions SET error_message = ? WHERE id = ?`;
+  db.run(query, [errorMessage, submissionId], function (err) {
+    callback(err);
   });
 }
 
@@ -319,14 +375,17 @@ module.exports = {
   getSubmissions,
   updateSubmission,
   deleteSubmission,
+  deleteSubmissionsByProjectId,
   updateSubmissionStatus,
   getConfigurationByProjectId,
   getSubmissionsAndTestConfig,
   updateActualOutput,
-  closeDatabase,
-  submissionExists,
   getConfigurationByName,
-  getProjectById,
+  getProjectById, 
+  getSubmissionById,
   getTestConfigByProjectId,
   getAllProjects,
+  getSubmissionPathsByProject,
+  submissionExists,
+  closeDatabase,
 };

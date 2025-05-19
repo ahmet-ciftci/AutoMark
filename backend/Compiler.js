@@ -3,19 +3,21 @@ const path = require("path");
 const fs = require("fs");
 
 const {
-  getSubmissionsAndTestConfig,
   getConfigurationByProjectId,
-  updateSubmissionStatus
+  updateSubmissionStatus,
+  updateSubmissionError
 } = require("./Database");
 
-function compileSubmission(submission, config) {
+function compileSubmission(submission, config, callback) {
+  console.log(`Compiling submission for student: ${submission.student_id}`);
+  
   return new Promise((resolve) => {
     const sourceFiles = config.source_code
       ? config.source_code
-          .split(/\s+/)
-          .map(f => path.join(submission.path, f))
-          .map(f => `"${f}"`)
-          .join(" ")
+        .split(/\s+/)
+        .map(f => path.join(submission.path, f))
+        .map(f => `"${f}"`)
+        .join(" ")
       : "";
 
     // Check that all source files exist
@@ -27,7 +29,15 @@ function compileSubmission(submission, config) {
       if (missingFiles.length > 0) {
         const errorMessage = `Missing source file(s): ${missingFiles.join(", ")}`;
         console.error(`Source not found for ${submission.student_id}: ${errorMessage}`);
-        return resolve({ success: false, errorMessage });
+        
+        // Update submission status
+        updateSubmissionStatus(submission.submission_id, "compile_error", errorMessage, (err) => {
+          if (err) console.error("DB update failed:", err.message);
+          resolve({ success: false, errorMessage });
+          if (callback) callback({ success: false, errorMessage });
+        });
+        
+        return;
       }
     }
 
@@ -35,64 +45,42 @@ function compileSubmission(submission, config) {
       const compileCmd = `${config.compile_command} ${sourceFiles} ${config.compile_parameters || ""}`;
       exec(compileCmd, { cwd: submission.path }, (error, stdout, stderr) => {
         if (error) {
-          return resolve({ success: false, errorMessage: stderr || stdout || error.message });
+          const errorMessage = stderr || stdout || error.message;
+          console.error(`${submission.student_id} failed:`, errorMessage);
+          
+          // Update submission status
+          updateSubmissionStatus(submission.submission_id, "compile_error", errorMessage, (err) => {
+            if (err) console.error("DB update failed:", err.message);
+            resolve({ success: false, errorMessage });
+            if (callback) callback({ success: false, errorMessage });
+          });
+          
+          return;
         }
-        resolve({ success: true });
+        
+        console.log(`${submission.student_id} compiled successfully.`);
+        
+        // Update submission status
+        updateSubmissionStatus(submission.submission_id, "compiled", null, (err) => {
+          if (err) console.error("DB update failed:", err.message);
+          resolve({ success: true });
+          if (callback) callback({ success: true });
+        });
       });
     } else {
       // No compilation needed
-      resolve({ success: true });
-    }
-  });
-}
-
-function compileAllInProject(projectId, doneCallback) {
-  console.log("Compiling all submissions for project:", projectId);
-
-  getSubmissionsAndTestConfig(projectId, async (err, submissions) => {
-    if (err) {
-      console.error("Error fetching submissions:", err);
-      return doneCallback?.();
-    }
-
-    if (!submissions || submissions.length === 0) {
-      console.log("No submissions to compile.");
-      return doneCallback?.();
-    }
-
-    for (const submission of submissions) {
-      await new Promise((resolveStep) => {
-        getConfigurationByProjectId(projectId, async (err, config) => {
-          if (err || !config) {
-            console.error(`No config for ${submission.student_id}`);
-            return resolveStep();
-          }
-
-          const result = await compileSubmission(submission, config);
-
-          if (result.success) {
-            console.log(`${submission.student_id} compiled.`);
-            updateSubmissionStatus(submission.submission_id, "compiled", (err) => {
-              if (err) console.error("DB update failed:", err.message);
-              resolveStep();
-            });
-          } else {
-            console.error(`${submission.student_id} failed:`, result.errorMessage);
-            updateSubmissionStatus(submission.submission_id, "compile_error", (err) => {
-              if (err) console.error("DB update failed:", err.message);
-              resolveStep();
-            });
-          }
-        });
+      console.log(`${submission.student_id} marked as compiled (no compilation needed).`);
+      
+      // Update submission status
+      updateSubmissionStatus(submission.submission_id, "compiled", null, (err) => {
+        if (err) console.error("DB update failed:", err.message);
+        resolve({ success: true });
+        if (callback) callback({ success: true });
       });
     }
-
-    console.log("Compilation done for all.");
-    doneCallback?.();
   });
 }
 
 module.exports = {
-  compileSubmission,
-  compileAllInProject
+  compileSubmission
 };

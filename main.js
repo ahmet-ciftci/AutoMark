@@ -4,11 +4,16 @@ const db = require('./backend/Database');
 const { getSubmissionsAndTestConfig } = require('./backend/Database.js');
 const { extractAndSaveSubmissions } = require('./backend/FileManager.js');
 const { getProjectById } = require('./backend/Database.js');
-const { compileAllInProject } = require('./backend/Compiler.js');
-const {runAllCompiledSubmissions} = require('./backend/Runner.js');
-const { compareAllOutputs } = require('./backend/Comparer.js');
+const { compileSubmission } = require('./backend/Compiler.js');
+const { runSubmission } = require('./backend/Runner.js');
+const { compareOutput } = require('./backend/Comparer.js');
+const { readDirectoryRecursive } = require('./backend/DirectoryReader'); 
+const fs = require('fs');
+const { getSubmissionPathsByProject } = require('./backend/Database.js');
+const { processProject, processSubmission } = require('./backend/Processor.js');
 
 let mainWindow;
+let splashWindow;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -26,13 +31,34 @@ function createWindow() {
 
   mainWindow.loadFile(path.join(__dirname, 'frontend', 'dist', 'index.html'));
   mainWindow.setMenu(null);
-  
 }
 
+function createSplashWindow() {
+  splashWindow = new BrowserWindow({
+    width: 600,
+    height: 600,
+    transparent: true,
+    frame: false,
+    alwaysOnTop: true,
+    center: true,
+    resizable: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true
+    }
+  });
+  splashWindow.loadFile(path.join(__dirname, 'splash.html'));
+}
 
 app.whenReady().then(() => {
-  
-  createWindow();
+  createSplashWindow();
+
+  ipcMain.on('splash-finished', () => {
+    if (splashWindow) splashWindow.close();
+    createWindow();
+  });
 
   db.initializeDatabase();
   
@@ -88,15 +114,6 @@ app.whenReady().then(() => {
         if (err) reject(err);
         else resolve(rows);
       });
-
-    });
-  });
-  ipcMain.handle('extract-and-save-submissions', async (event, submissionsDir, outputDir, projectId) => {
-    return new Promise((resolve, reject) => {
-      extractAndSaveSubmissions(submissionsDir, outputDir, projectId, (err) => {
-        if (err) reject(err);
-        else resolve();
-      });
     });
   });
 
@@ -109,7 +126,6 @@ app.whenReady().then(() => {
     });
   });
   
-
   ipcMain.handle('get-project-by-id', async (event, projectId) => {
     return new Promise((resolve, reject) => {
       getProjectById(projectId, (err, row) => {
@@ -145,15 +161,6 @@ app.whenReady().then(() => {
     });
   });
 
-  ipcMain.handle('compile-all-in-project', async (event, projectId) => {
-    return new Promise((resolve, reject) => {
-      compileAllInProject(projectId, (err, result) => {
-        if (err) reject(err);
-        else resolve(result);
-      });
-    });
-  });
-
   ipcMain.handle('add-test-config', async (event, projectId, config) => {
     return new Promise((resolve, reject) => {
       db.addTestConfig(
@@ -163,14 +170,17 @@ app.whenReady().then(() => {
         config.output_method,
         config.expected_output,
         (err, id) => {
-          if (err) reject(err);
-          else resolve(id);
+          if (err) {
+            reject(err);
+          } else {
+            resolve(id); // Resolve with the new test config ID
+          }
         }
       );
     });
   });
 
-  //outputpathi sabit gir şimdilik
+  // Extract submissions from a directory
   ipcMain.handle('extract-submissions', async (event, projectId, submissionsPath) => {
     try {
       const outputPath = path.join(submissionsPath, '..', 'output');
@@ -181,51 +191,103 @@ app.whenReady().then(() => {
     }
   });
   
-  // Handle compilation of submissions
-  ipcMain.handle('compile-submissions', async (event, projectId) => {
+  // Process individual submissions - one by one approach
+  ipcMain.handle('compile-submission', async (event, submissionId, configId) => {
     return new Promise((resolve, reject) => {
-      compileAllInProject(projectId, (err) => {
-        if (err) reject(err);
-        else resolve();
+      // First get the submission details
+      db.getSubmissionById(submissionId, (err, submission) => {
+        if (err) return reject(err);
+        
+        // Get the configuration if configId provided, otherwise use project's default
+        const getConfig = configId 
+          ? (callback) => db.getConfigurationById(configId, callback)
+          : (callback) => db.getConfigurationByProjectId(submission.project_id, callback);
+          
+        getConfig((err, config) => {
+          if (err) return reject(err);
+          if (!config) return reject(new Error('Configuration not found'));
+          
+          // Compile the submission with the config
+          compileSubmission(submission, config)
+            .then(result => resolve(result))
+            .catch(err => reject(err));
+        });
       });
     });
   });
-  // Handle execution of submissions
-  ipcMain.handle('run-submissions', async (event, projectId) => {
+  
+  ipcMain.handle('run-submission', async (event, submissionId, configId) => {
     return new Promise((resolve, reject) => {
-      runAllCompiledSubmissions(projectId, (err) => {
-        if (err) reject(err);
-        else resolve();
+      // First get the submission details
+      db.getSubmissionById(submissionId, (err, submission) => {
+        if (err) return reject(err);
+        
+        // Get the configuration if configId provided, otherwise use project's default
+        const getConfig = configId 
+          ? (callback) => db.getConfigurationById(configId, callback)
+          : (callback) => db.getConfigurationByProjectId(submission.project_id, callback);
+          
+        getConfig((err, config) => {
+          if (err) return reject(err);
+          if (!config) return reject(new Error('Configuration not found'));
+          
+          // Run the submission with the config
+          runSubmission(submission, config)
+            .then(result => resolve(result))
+            .catch(err => reject(err));
+        });
       });
     });
   });
-  // Handle output comparison
-  ipcMain.handle('compare-outputs', async (event, projectId) => {
+  
+  ipcMain.handle('compare-output', async (event, submissionId) => {
     return new Promise((resolve, reject) => {
-      compareAllOutputs(projectId, (err) => {
-        if (err) reject(err);
-        else resolve();
-      }); 
-    });
-  });
-  ipcMain.handle('run-all-compiled-submissions', async (event, projectId) => {
-    return new Promise((resolve, reject) => {
-      runAllCompiledSubmissions(projectId, (err, result) => {
-        if (err) reject(err);
-        else resolve(result);
+      // Get the submission with its test config
+      db.getSubmissionById(submissionId, (err, submission) => {
+        if (err) return reject(err);
+        
+        // Get test config for the project
+        db.getTestConfigByProjectId(submission.project_id, (err, testConfig) => {
+          if (err) return reject(err);
+          if (!testConfig) return reject(new Error('Test configuration not found'));
+          
+          // Merge test config with submission for comparison
+          const submissionWithConfig = { ...submission, ...testConfig };
+          
+          // Compare the output
+          compareOutput(submissionWithConfig)
+            .then(result => resolve(result))
+            .catch(err => reject(err));
+        });
       });
     });
   });
 
-  ipcMain.handle('compare-all-outputs', async (event, projectId) => {
+  ipcMain.handle('get-submission-by-id', async (event, id) => {
     return new Promise((resolve, reject) => {
-      compareAllOutputs(projectId, (err, result) => {
+      db.getSubmissionById(id, (err, row) => {
         if (err) reject(err);
-        else resolve(result);
+        else resolve(row);
       });
     });
   });
 
+  ipcMain.handle('update-submission', async (event, submission) => {
+    return new Promise((resolve, reject) => {
+      db.updateSubmission(
+        submission.id,
+        submission.student_id,
+        submission.status,
+        submission.path,
+        submission.actual_output,
+        (err, changes) => {
+          if (err) reject(err);
+          else resolve(changes);
+        }
+      );
+    });
+  });
+  
   ipcMain.handle('get-test-config-by-project-id', async (event, projectId) => {
     return new Promise((resolve, reject) => {
       db.getTestConfigByProjectId(projectId, (err, row) => {
@@ -255,10 +317,239 @@ app.whenReady().then(() => {
     });
   });
   
+  ipcMain.handle('get-project-files', async (event, projectId) => {
+    return new Promise((resolve, reject) => {
+      if (!projectId) {
+        return reject(new Error("No project ID provided"));
+      }
+      
+      db.getProjectById(projectId, (err, project) => {
+        if (err || !project) {
+          return reject(err || new Error("Project not found"));
+        }
+        
+        db.getConfigurationByProjectId(projectId, (err, config) => {
+          if (err) return reject(err || new Error("Config not found"));
+          
+          // Default to all common source file extensions if no config or source code is specified
+          let extensions = ['.c', '.cpp', '.java', '.py', '.js', '.html', '.css'];
+          
+          if (config && config.source_code) {
+            // Get file extension(s) from source_code field
+            const sourceFiles = config.source_code.split(/\s+/);
+            extensions = sourceFiles
+              .map(file => path.extname(file).toLowerCase())
+              .filter(ext => ext); // Remove empty extensions
+              
+            // If no extensions found, use defaults
+            if (extensions.length === 0) {
+              extensions = ['.c', '.cpp', '.java', '.py', '.js', '.html', '.css'];
+            }
+          }
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+          db.getSubmissionPathsByProject(projectId, (err2, rows) => {
+            if (err2) return reject(err2);
+            
+            if (!rows || rows.length === 0) {
+              return reject(new Error("No submissions found for this project"));
+            }
+
+            try {
+              const result = rows
+                .filter(row => row.path && fs.existsSync(row.path)) // Filter out invalid paths
+                .map(row => {
+                  const folderPath = row.path;
+                  const structure = readDirectoryRecursive(folderPath, extensions);
+                  return {
+                    name: path.basename(folderPath),
+                    type: 'folder',
+                    path: folderPath,
+                    children: structure
+                  };
+                });
+                
+              if (result.length === 0) {
+                return reject(new Error("No valid submission folders found"));
+              }
+              
+              resolve(result);
+            } catch (e) {
+              console.error("Error building file structure:", e);
+              reject(e);
+            }
+          });
+        });
+      });
+    });
   });
+
+  ipcMain.handle('update-project', async (event, projectId, name, configId, submissionsPath) => {
+    return new Promise((resolve, reject) => {
+      // First, delete existing submissions for the project
+      db.deleteSubmissionsByProjectId(projectId, (deleteErr, deleteChanges) => {
+        if (deleteErr) {
+          console.error('Failed to delete submissions before project update:', deleteErr);
+          return reject(deleteErr); // Stop the process if deletion fails
+        }
+        console.log(`Successfully deleted ${deleteChanges} submissions for project ${projectId} before update.`);
+
+        // Then, update the project details
+        db.updateProject(projectId, name, configId, submissionsPath, (updateErr, updateChanges) => {
+          if (updateErr) {
+            console.error('Error updating project in main.js:', updateErr);
+            return reject(updateErr);
+          }
+          // After project update, re-extract and process submissions
+          // Assuming submissionsPath is up-to-date or re-confirmed by the user
+          if (submissionsPath) {
+            extractAndSaveSubmissions(submissionsPath, path.join(submissionsPath, '..', 'output'), projectId)
+              .then(() => {
+                console.log('Submissions re-extracted after project update.');
+                // Optionally, trigger re-processing of all submissions here if needed
+                // For example, by calling processProject or similar logic
+                resolve(updateChanges);
+              })
+              .catch(extractErr => {
+                console.error('Failed to re-extract submissions after project update:', extractErr);
+                // Decide if this error should cause a rejection
+                // For now, resolve the project update but log the extraction error
+                resolve(updateChanges); 
+              });
+          } else {
+            resolve(updateChanges); // Resolve if no submissions path to re-extract from
+          }
+        });
+      });
+    });
+  });
+
+  ipcMain.handle('get-configuration-by-id', async (event, id) => {
+    return new Promise((resolve, reject) => {
+      db.getConfigurationById(id, (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+  });
+
+  ipcMain.handle('delete-test-config', async (event, testConfigId) => {
+    return new Promise((resolve, reject) => {
+      db.deleteTestConfig(testConfigId, (err, changes) => {
+        if (err) {
+          console.error('Error deleting test config in main.js:', err);
+          reject(err);
+        } else {
+          resolve(changes);
+        }
+      });
+    });
+  });
+
+  ipcMain.handle('read-file', async (event, filePath) => {
+    try {
+      const stats = fs.statSync(filePath);
+      if (stats.isDirectory()) {
+        throw new Error('Cannot read directory');
+      }
+  
+      const content = fs.readFileSync(filePath, 'utf-8');
+      return content;
+    } catch (err) {
+      console.error("Error in read-file:", err);
+      throw err;
+    }
+  });
+  
+  ipcMain.handle('save-file', async (event, filePath, content) => {
+    try {
+      fs.writeFileSync(filePath, content, 'utf-8');
+      return true;
+    } catch (err) {
+      console.error('Failed to save file:', err);
+      throw err;
+    }
+  });
+
+  ipcMain.handle('show-save-dialog', async () => {
+    const result = await dialog.showSaveDialog({
+      title: 'Save CSV Report',
+      defaultPath: 'submissions_report.csv',
+      filters: [{ name: 'CSV Files', extensions: ['csv'] }]
+    });
+
+    return result.canceled ? null : result.filePath;
+  });
+
+  // Add this handler specifically for JSON configuration export
+  ipcMain.handle('show-json-save-dialog', async (event, options = {}) => {
+    const defaultOptions = {
+      title: 'Export Configuration',
+      defaultPath: options.defaultPath || 'config.json',
+      filters: [{ name: 'JSON Files', extensions: ['json'] }]
+    };
+    
+    const result = await dialog.showSaveDialog(defaultOptions);
+    return result.canceled ? null : result.filePath;
+  });
+
+  ipcMain.handle('process-project', async (event, projectId, submissionsPath, concurrency) => {
+    try {
+      console.log(`Processing project ${projectId} with submissions at ${submissionsPath}`);
+      const results = await processProject(projectId, submissionsPath, concurrency || 4);
+      return results;
+    } catch (err) {
+      console.error('Process project error:', err);
+      throw err;
+    }
+  });
+
+  ipcMain.handle('process-submission', async (event, submissionId, configId) => {
+    try {
+      console.log(`Processing submission ${submissionId}`);
+      const result = await processSubmission(submissionId, configId);
+      return result;
+    } catch (err) {
+      console.error('Process submission error:', err);
+      throw err;
+    }
+  });
+
+  ipcMain.handle('delete-project', async (event, projectId) => {
+    return new Promise((resolve, reject) => {
+      db.deleteProject(projectId, (err, changes) => {
+        if (err) {
+          console.error('Error deleting project in main.js:', err);
+          reject(err);
+        } else {
+          resolve(changes);
+        }
+      });
+    });
+  });
+
+  // View menu handlers
+  ipcMain.handle('view-set-zoom-level', (event, level) => {
+    mainWindow.webContents.setZoomLevel(level);
+  });
+
+  ipcMain.handle('view-get-zoom-level', () => {
+    return mainWindow.webContents.getZoomLevel();
+  });
+
+  ipcMain.handle('view-zoom-in', () => {
+    const currentZoom = mainWindow.webContents.getZoomLevel();
+    mainWindow.webContents.setZoomLevel(currentZoom + 0.5);
+  });
+
+  ipcMain.handle('view-zoom-out', () => {
+    const currentZoom = mainWindow.webContents.getZoomLevel();
+    mainWindow.webContents.setZoomLevel(currentZoom - 0.5);
+  });
+
+  ipcMain.handle('view-reset-zoom', () => {
+    mainWindow.webContents.setZoomLevel(0); // Reset to default zoom level
+  });
+
 });
 
 app.on('window-all-closed', () => {
