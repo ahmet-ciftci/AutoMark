@@ -65,7 +65,6 @@ const MenuBar = ({ onNewProject = () => {}, onOpenProject = () => {}, helpConten
                   <span className="menu-item-shortcut">Ctrl+N</span>
                 </div>
                 <div className="menu-item group" onClick={() => { onOpenProject(); closeMenu(); }}>
-                <div className="menu-item group" onClick={() => { onOpenProject(); closeMenu(); }}>
                   <span className="menu-item-text">Open Project</span>
                   <span className="menu-item-shortcut">Ctrl+O</span>
                 </div>
@@ -89,6 +88,7 @@ const MenuBar = ({ onNewProject = () => {}, onOpenProject = () => {}, helpConten
               </div>
             </div>
           )}
+          
         </div>
 
         {/* EDIT MENU */}

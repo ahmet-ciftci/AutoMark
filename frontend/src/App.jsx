@@ -335,7 +335,7 @@ function App() {
 
         );
       default:
-        return <p>Yardım içeriği mevcut değil.</p>;
+        return <p>Help</p>;
     }
   };
 
