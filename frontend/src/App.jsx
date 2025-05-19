@@ -402,9 +402,9 @@ function App() {
             <p className="font-semibold text-gray-200">Score</p>
             <p>Each submission is graded as a percentage:</p>
             <ul className="list-disc list-inside text-gray-300">
-              <li><span className="text-green-400 font-medium">100%</span>: All outputs matched</li>
-              <li><span className="text-yellow-400 font-medium">Partial</span>: Some test cases matched</li>
-              <li><span className="text-red-400 font-medium">0%</span>: No outputs matched</li>
+              <li><span className="text-green-500 font-medium">70%-100%</span>: Good match - Most outputs matched correctly</li>
+              <li><span className="text-yellow-400 font-medium">50%-69%</span>: Partial match - Some test cases matched</li>
+              <li><span className="text-red-500 font-medium">0%-49%</span>: Poor match - Few or no outputs matched</li>
             </ul>
 
             <div className="h-4" />
